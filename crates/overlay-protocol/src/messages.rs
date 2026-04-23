@@ -29,3 +29,16 @@ pub struct SessionOpenGrant {
     pub home_node_id: String,
     pub relay_hint: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PublishedService {
+    pub id: String,
+    pub kind: ServiceKind,
+    pub target: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegisterNodeRequest {
+    pub node_id: String,
+    pub services: Vec<PublishedService>,
+}
