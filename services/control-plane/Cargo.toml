@@ -7,6 +7,8 @@ version.workspace = true
 [dependencies]
 anyhow.workspace = true
 axum.workspace = true
+overlay-crypto = { path = "../../crates/overlay-crypto" }
+serde.workspace = true
 sqlx.workspace = true
 tokio.workspace = true
 tracing.workspace = true
