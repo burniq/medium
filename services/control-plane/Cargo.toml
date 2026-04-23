@@ -1,0 +1,7 @@
+[package]
+name = "control-plane"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]

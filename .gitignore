@@ -1,0 +1,8 @@
+/target
+/.gradle
+/apps/android/.idea
+/apps/android/app/build
+/apps/apple/**/*.xcuserdata
+/apps/apple/build
+/apps/linux-client/target
+/DerivedData

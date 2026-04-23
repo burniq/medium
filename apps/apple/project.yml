@@ -1,0 +1,12 @@
+name: OverlayApple
+options:
+  minimumXcodeGenVersion: 2.40.0
+targets:
+  OverlayMac:
+    type: application
+    platform: macOS
+    sources: [OverlayApp]
+  OverlayIOS:
+    type: application
+    platform: iOS
+    sources: [OverlayApp]
