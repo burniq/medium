@@ -76,6 +76,13 @@ pub struct DeviceCatalogResponse {
     pub devices: Vec<DeviceRecord>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BootstrapInviteResponse {
+    pub invite: String,
+    pub bootstrap_token: String,
+    pub expires_at: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceRecord {
     pub id: String,
