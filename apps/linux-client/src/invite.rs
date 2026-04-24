@@ -1,5 +1,7 @@
 use anyhow::{Context, bail};
 
+const SUPPORTED_INVITE_VERSION: u32 = 1;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Invite {
     pub version: u32,
@@ -55,8 +57,13 @@ pub fn parse_invite(raw: &str) -> anyhow::Result<Invite> {
         }
     }
 
+    let version = version.context("invite is missing version")?;
+    if version != SUPPORTED_INVITE_VERSION {
+        bail!("unsupported invite version {version}");
+    }
+
     Ok(Invite {
-        version: version.context("invite is missing version")?,
+        version,
         control_url: control_url.context("invite is missing control URL")?,
         bootstrap_token: bootstrap_token.context("invite is missing bootstrap token")?,
     })
