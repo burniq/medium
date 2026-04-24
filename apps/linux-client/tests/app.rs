@@ -1,5 +1,7 @@
 use linux_client::app::{normalize_device_label, summary, title};
+use linux_client::paths::AppPaths;
 use linux_client::run;
+use linux_client::state::AppState;
 use std::fs;
 
 #[test]
@@ -88,6 +90,24 @@ fn run_rejects_unknown_commands() {
     assert!(
         error.contains("usage: medium [pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
     );
+}
+
+#[test]
+fn app_state_saves_under_state_directory() -> anyhow::Result<()> {
+    let home = tempfile::tempdir()?;
+    let paths = AppPaths::from_home(home.path());
+    let state = AppState {
+        server_url: "https://example.test".to_string(),
+        device_name: "node-home".to_string(),
+        bootstrap_code: "ABC123".to_string(),
+    };
+
+    state.save(&paths)?;
+
+    assert!(paths.state_dir.is_dir());
+    assert!(paths.state_path.is_file());
+    assert!(!paths.app_config_dir.join("state.json").exists());
+    Ok(())
 }
 
 fn write_config(contents: &str) -> anyhow::Result<std::path::PathBuf> {

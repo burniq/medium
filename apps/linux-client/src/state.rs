@@ -15,7 +15,7 @@ impl AppState {
     }
 
     pub fn save(&self, paths: &AppPaths) -> anyhow::Result<()> {
-        std::fs::create_dir_all(&paths.app_config_dir)?;
+        std::fs::create_dir_all(&paths.state_dir)?;
         std::fs::write(&paths.state_path, serde_json::to_vec_pretty(self)?)?;
         Ok(())
     }
