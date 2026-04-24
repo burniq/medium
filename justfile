@@ -14,3 +14,6 @@ e2e-up:
 
 smoke:
   bash tests/e2e/smoke.sh
+
+e2e-macos-ssh:
+  bash tests/e2e/macos_ssh_sync.sh

@@ -7,7 +7,7 @@ pub fn title() -> &'static str {
 }
 
 pub fn summary() -> &'static str {
-    "Overlay headless Linux client"
+    "Overlay CLI"
 }
 
 pub fn normalize_device_label(raw: &str) -> String {

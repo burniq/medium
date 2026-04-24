@@ -45,6 +45,25 @@ pub struct RegisterNodeRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceCatalogResponse {
+    pub devices: Vec<DeviceRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceRecord {
+    pub id: String,
+    pub name: String,
+    pub ssh: Option<SshEndpoint>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SshEndpoint {
+    pub host: String,
+    pub port: u16,
+    pub user: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PeerCandidate {
     pub addr: String,
 }
