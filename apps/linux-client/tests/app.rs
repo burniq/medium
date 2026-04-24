@@ -47,8 +47,9 @@ fn run_supports_label_normalization() -> anyhow::Result<()> {
 fn run_requires_config_flag() {
     let error = run(vec!["medium".to_string(), "run".to_string()]).unwrap_err();
     assert!(
-        error.contains("usage: medium [join <invite> | pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
+        error.contains("usage: medium [join <invite> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
     );
+    assert!(!error.contains("pair --server <url> --device <name>"));
 }
 
 #[test]
@@ -88,8 +89,9 @@ target = "127.0.0.1:22"
 fn run_rejects_unknown_commands() {
     let error = run(vec!["medium".to_string(), "bad".to_string()]).unwrap_err();
     assert!(
-        error.contains("usage: medium [join <invite> | pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
+        error.contains("usage: medium [join <invite> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
     );
+    assert!(!error.contains("pair --server <url> --device <name>"));
 }
 
 #[test]
