@@ -5,3 +5,10 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+overlay-protocol = { path = "../overlay-protocol" }
+quinn.workspace = true
+rustls.workspace = true
+tokio.workspace = true
+tracing.workspace = true
