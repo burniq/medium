@@ -7,6 +7,11 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct BootstrapCodeResponse {
+    #[serde(default)]
+    invite: String,
+    #[serde(default)]
+    bootstrap_token: String,
+    #[serde(default)]
     code: String,
 }
 
@@ -15,11 +20,20 @@ pub async fn pair(server_url: &str, device_name: &str) -> anyhow::Result<AppStat
     let url = format!("{server_url}/api/bootstrap-code");
     let response = reqwest::get(url).await?.error_for_status()?;
     let payload: BootstrapCodeResponse = response.json().await?;
+    let bootstrap_code = if !payload.bootstrap_token.is_empty() {
+        payload.bootstrap_token
+    } else if !payload.code.is_empty() {
+        payload.code
+    } else if !payload.invite.is_empty() {
+        crate::state::invite::parse_invite(&payload.invite)?.bootstrap_token
+    } else {
+        bail!("bootstrap response is missing a token");
+    };
 
     Ok(AppState {
         server_url: server_url.to_string(),
         device_name: device_name.to_string(),
-        bootstrap_code: payload.code,
+        bootstrap_code,
         invite_version: 0,
     })
 }
@@ -79,4 +93,15 @@ pub async fn open_session(state: &AppState, service_id: &str) -> anyhow::Result<
         .await?
         .error_for_status()?;
     Ok(response.json().await?)
+}
+
+pub fn format_join_invite(control_url: &str, bootstrap_token: &str) -> anyhow::Result<String> {
+    let control_url = normalize_control_url(control_url)?;
+    if bootstrap_token.is_empty() {
+        bail!("bootstrap token cannot be empty");
+    }
+
+    Ok(format!(
+        "medium://join?v=1&control={control_url}&token={bootstrap_token}"
+    ))
 }

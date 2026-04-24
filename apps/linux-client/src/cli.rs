@@ -4,6 +4,8 @@ use crate::paths::AppPaths;
 use crate::ssh::sync_ssh_config;
 use crate::state::AppState;
 use crate::state::invite;
+#[path = "install.rs"]
+mod install;
 use home_node::agent::prepare_agent_from_path;
 use overlay_protocol::{DeviceRecord, SessionOpenGrant};
 use overlay_transport::session::{SessionHello, write_session_hello};
@@ -11,9 +13,12 @@ use std::path::PathBuf;
 use tokio::io::{self, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-const USAGE: &str = "usage: medium [join <invite> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]";
+const USAGE: &str = "usage: medium [join <invite> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]\nusage: medium [init-control [--reconfigure] | join <invite> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]";
 
 enum Command {
+    InitControl {
+        reconfigure: bool,
+    },
     Run {
         config_path: PathBuf,
     },
@@ -48,7 +53,8 @@ where
         }
         Command::Info => Ok(app::summary().to_string()),
         Command::NormalizeLabel { value } => Ok(app::normalize_device_label(&value)),
-        Command::Join { .. }
+        Command::InitControl { .. }
+        | Command::Join { .. }
         | Command::Pair { .. }
         | Command::Devices
         | Command::SshSync { .. }
@@ -61,6 +67,14 @@ where
     I: IntoIterator<Item = String>,
 {
     match parse(args)? {
+        Command::InitControl { reconfigure } => {
+            let report = install::init_control(reconfigure).map_err(|error| error.to_string())?;
+            Ok(Some(format!(
+                "initialized Medium control at {} and generated invite {}",
+                report.control_config_path.display(),
+                report.invite
+            )))
+        }
         Command::Run { config_path } => {
             let agent = prepare_agent_from_path(config_path).map_err(|error| error.to_string())?;
             agent
@@ -145,6 +159,12 @@ where
     let args: Vec<String> = args.into_iter().collect();
 
     match args.as_slice() {
+        [_binary, command] if command == "init-control" => {
+            Ok(Command::InitControl { reconfigure: false })
+        }
+        [_binary, command, flag] if command == "init-control" && flag == "--reconfigure" => {
+            Ok(Command::InitControl { reconfigure: true })
+        }
         [_binary, command, invite] if command == "join" => Ok(Command::Join {
             invite: invite.clone(),
         }),
