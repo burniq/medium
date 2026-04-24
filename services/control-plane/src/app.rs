@@ -1,10 +1,6 @@
-use axum::{routing::get, Router};
+use axum::{Router, routing::get};
 
-use crate::routes::{
-    health::health,
-    pairing::create_bootstrap_code,
-    sessions::open_session,
-};
+use crate::routes::{health::health, pairing::create_bootstrap_code, sessions::open_session};
 
 pub fn build_router() -> Router {
     Router::new()

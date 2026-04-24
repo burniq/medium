@@ -5,7 +5,12 @@ use tower::ServiceExt;
 async fn health_route_returns_ok() {
     let app = control_plane::app::build_router();
     let response = app
-        .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/health")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
