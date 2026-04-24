@@ -78,6 +78,7 @@ pub struct DeviceCatalogResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BootstrapInviteResponse {
+    pub code: String,
     pub invite: String,
     pub bootstrap_token: String,
     pub expires_at: Option<String>,
