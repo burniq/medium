@@ -8,3 +8,9 @@ rust-test:
 
 android-test:
   cd apps/android && gradle test
+
+e2e-up:
+  podman compose -f tests/e2e/docker-compose.yml up -d
+
+smoke:
+  bash tests/e2e/smoke.sh
