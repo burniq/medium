@@ -1,22 +1,14 @@
-use axum::Json;
-use overlay_protocol::{DeviceCatalogResponse, DeviceRecord, SshEndpoint};
+use crate::state::ControlState;
+use axum::{Json, extract::State, http::StatusCode};
+use overlay_protocol::DeviceCatalogResponse;
 
-pub async fn list_devices() -> Json<DeviceCatalogResponse> {
-    Json(device_catalog_from_env())
-}
-
-pub fn device_catalog_from_env() -> DeviceCatalogResponse {
-    DeviceCatalogResponse {
-        devices: vec![DeviceRecord {
-            id: std::env::var("OVERLAY_HOME_NODE_ID").unwrap_or_else(|_| "node-home".into()),
-            name: std::env::var("OVERLAY_HOME_NODE_NAME").unwrap_or_else(|_| "node-home".into()),
-            ssh: Some(SshEndpoint {
-                service_id: std::env::var("OVERLAY_SSH_SERVICE_ID")
-                    .unwrap_or_else(|_| "svc_home_ssh".into()),
-                host: "127.0.0.1".into(),
-                port: 2222,
-                user: std::env::var("OVERLAY_SSH_USER").unwrap_or_else(|_| "overlay".into()),
-            }),
-        }],
-    }
+pub async fn list_devices(
+    State(state): State<ControlState>,
+) -> Result<Json<DeviceCatalogResponse>, StatusCode> {
+    let catalog = state
+        .registry
+        .list_devices()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(catalog))
 }

@@ -1,5 +1,6 @@
 use overlay_protocol::{
-    DeviceCatalogResponse, DeviceRecord, ServiceKind, SessionOpenRequest, SshEndpoint,
+    DeviceCatalogResponse, DeviceRecord, EndpointKind, NodeEndpoint, PublishedService,
+    RegisterNodeRequest, ServiceKind, SessionOpenRequest, SshEndpoint,
 };
 
 #[test]
@@ -39,4 +40,34 @@ fn device_catalog_round_trips_as_json() {
     assert_eq!(parsed.devices[0].name, "node-home");
     assert_eq!(parsed.devices[0].ssh.as_ref().unwrap().service_id, "svc_home_ssh");
     assert_eq!(parsed.devices[0].ssh.as_ref().unwrap().port, 2222);
+}
+
+#[test]
+fn register_node_request_round_trips_versioned_components() {
+    let request = RegisterNodeRequest {
+        node_id: "node-home".into(),
+        node_label: "Home".into(),
+        endpoints: vec![NodeEndpoint {
+            kind: EndpointKind::TcpProxy,
+            schema_version: 1,
+            addr: "127.0.0.1:17001".into(),
+            priority: 10,
+        }],
+        services: vec![PublishedService {
+            id: "svc_home_ssh".into(),
+            kind: ServiceKind::Ssh,
+            schema_version: 1,
+            label: Some("Home SSH".into()),
+            target: "127.0.0.1:2222".into(),
+            user_name: Some("overlay".into()),
+        }],
+    };
+
+    let json = serde_json::to_string(&request).unwrap();
+    let parsed: RegisterNodeRequest = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(parsed.node_label, "Home");
+    assert_eq!(parsed.endpoints[0].kind.as_str(), "tcp_proxy");
+    assert_eq!(parsed.services[0].schema_version, 1);
+    assert_eq!(parsed.services[0].user_name.as_deref(), Some("overlay"));
 }

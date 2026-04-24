@@ -5,16 +5,20 @@ use std::fs;
 fn parses_https_service_definition() {
     let raw = r#"
 node_id = "node-home"
+node_label = "Home"
 
 [[services]]
 id = "svc_home_openclaw"
 kind = "https"
+label = "OpenClaw"
 target = "127.0.0.1:3000"
 "#;
 
     let cfg: NodeConfig = toml::from_str(raw).unwrap();
     assert_eq!(cfg.services.len(), 1);
+    assert_eq!(cfg.node_label.as_deref(), Some("Home"));
     assert_eq!(cfg.services[0].id, "svc_home_openclaw");
+    assert_eq!(cfg.services[0].label.as_deref(), Some("OpenClaw"));
 }
 
 #[test]
@@ -32,6 +36,7 @@ fn loads_node_config_from_file() {
         &path,
         r#"
 node_id = "node-home"
+node_label = "Home"
 
 [[services]]
 id = "svc_home_openclaw"

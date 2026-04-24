@@ -12,6 +12,12 @@ async fn main() {
     let shared_secret =
         std::env::var("OVERLAY_SHARED_SECRET").unwrap_or_else(|_| "local-dev-secret".into());
     tracing_subscriber::fmt::init();
+    if let Ok(control_url) = std::env::var("OVERLAY_CONTROL_URL") {
+        let registration = home_node::control::build_registration(&cfg);
+        home_node::agent::register_node_with_retry(&control_url, &registration)
+            .await
+            .unwrap();
+    }
     home_node::proxy::run_tcp_proxy(cfg, &shared_secret)
         .await
         .unwrap();

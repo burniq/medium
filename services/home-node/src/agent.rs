@@ -53,3 +53,38 @@ pub fn prepare_agent_from_path(path: impl AsRef<Path>) -> anyhow::Result<Prepare
     let cfg = load_from_path(path)?;
     Ok(prepare_agent(cfg))
 }
+
+pub async fn register_node(
+    control_url: &str,
+    registration: &RegisterNodeRequest,
+) -> anyhow::Result<()> {
+    reqwest::Client::new()
+        .post(format!(
+            "{}/api/nodes/register",
+            control_url.trim_end_matches('/')
+        ))
+        .json(registration)
+        .send()
+        .await?
+        .error_for_status()?;
+    Ok(())
+}
+
+pub async fn register_node_with_retry(
+    control_url: &str,
+    registration: &RegisterNodeRequest,
+) -> anyhow::Result<()> {
+    let mut last_error = None;
+
+    for _ in 0..30 {
+        match register_node(control_url, registration).await {
+            Ok(()) => return Ok(()),
+            Err(error) => {
+                last_error = Some(error);
+                tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+            }
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| anyhow::anyhow!("registration failed")))
+}

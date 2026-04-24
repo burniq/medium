@@ -4,6 +4,8 @@ use std::path::Path;
 #[derive(Debug, Deserialize)]
 pub struct NodeConfig {
     pub node_id: String,
+    #[serde(default)]
+    pub node_label: Option<String>,
     #[serde(default = "default_bind_addr")]
     pub bind_addr: String,
     pub services: Vec<ServiceConfig>,
@@ -13,7 +15,11 @@ pub struct NodeConfig {
 pub struct ServiceConfig {
     pub id: String,
     pub kind: String,
+    #[serde(default)]
+    pub label: Option<String>,
     pub target: String,
+    #[serde(default)]
+    pub user_name: Option<String>,
 }
 
 pub fn load_from_path(path: impl AsRef<Path>) -> anyhow::Result<NodeConfig> {

@@ -16,6 +16,20 @@ impl ServiceKind {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum EndpointKind {
+    TcpProxy,
+}
+
+impl EndpointKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::TcpProxy => "tcp_proxy",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionOpenRequest {
     pub service_id: String,
@@ -35,12 +49,25 @@ pub struct SessionOpenGrant {
 pub struct PublishedService {
     pub id: String,
     pub kind: ServiceKind,
+    pub schema_version: u32,
+    pub label: Option<String>,
     pub target: String,
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NodeEndpoint {
+    pub kind: EndpointKind,
+    pub schema_version: u32,
+    pub addr: String,
+    pub priority: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegisterNodeRequest {
     pub node_id: String,
+    pub node_label: String,
+    pub endpoints: Vec<NodeEndpoint>,
     pub services: Vec<PublishedService>,
 }
 

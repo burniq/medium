@@ -1,12 +1,33 @@
 use overlay_crypto::verify_session_token;
-use overlay_protocol::SessionOpenRequest;
+use overlay_protocol::{EndpointKind, NodeEndpoint, PublishedService, RegisterNodeRequest, ServiceKind, SessionOpenRequest};
 
-#[test]
-fn session_grant_contains_signed_token_and_candidate() {
+#[tokio::test]
+async fn session_grant_contains_signed_token_and_candidate() {
+    let store = control_plane::registry::RegistryStore::in_memory().await.unwrap();
+    store
+        .register_node(&RegisterNodeRequest {
+            node_id: "node-home".into(),
+            node_label: "Home".into(),
+            endpoints: vec![NodeEndpoint {
+                kind: EndpointKind::TcpProxy,
+                schema_version: 1,
+                addr: "127.0.0.1:17001".into(),
+                priority: 10,
+            }],
+            services: vec![PublishedService {
+                id: "svc_home_ssh".into(),
+                kind: ServiceKind::Ssh,
+                schema_version: 1,
+                label: Some("Home SSH".into()),
+                target: "127.0.0.1:2222".into(),
+                user_name: Some("overlay".into()),
+            }],
+        })
+        .await
+        .unwrap();
+
     let settings = control_plane::routes::sessions::SessionSettings {
-        ssh_service_id: "svc_home_ssh".into(),
-        home_node_id: "node-home".into(),
-        home_node_tcp_addr: "127.0.0.1:17001".into(),
+        registry: store,
         shared_secret: "local-secret".into(),
     };
     let grant = control_plane::routes::sessions::issue_session_grant(
@@ -16,6 +37,7 @@ fn session_grant_contains_signed_token_and_candidate() {
         },
         &settings,
     )
+    .await
     .unwrap();
 
     assert_eq!(grant.authorization.candidates[0].addr, "127.0.0.1:17001");

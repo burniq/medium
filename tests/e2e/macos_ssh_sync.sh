@@ -16,27 +16,29 @@ home_addr="127.0.0.1:17001"
 target_addr="127.0.0.1:2222"
 shared_secret="local-secret"
 home_config="$workdir/home-node.toml"
+db_url="sqlite://$workdir/control-plane.db"
 
 cat >"$home_config" <<EOF
 node_id = "node-home"
+node_label = "node-home"
 bind_addr = "$home_addr"
 
 [[services]]
 id = "svc_home_ssh"
 kind = "ssh"
+user_name = "overlay"
 target = "$target_addr"
 EOF
 
 OVERLAY_CONTROL_BIND_ADDR="$control_addr" \
-OVERLAY_HOME_NODE_TCP_ADDR="$home_addr" \
-OVERLAY_HOME_NODE_ID="node-home" \
-OVERLAY_HOME_NODE_NAME="node-home" \
-OVERLAY_SSH_SERVICE_ID="svc_home_ssh" \
 OVERLAY_SHARED_SECRET="$shared_secret" \
+OVERLAY_CONTROL_DATABASE_URL="$db_url" \
 cargo run -p control-plane >"$control_log" 2>&1 &
 control_pid=$!
 
-OVERLAY_SHARED_SECRET="$shared_secret" cargo run -p home-node -- --config "$home_config" >"$home_log" 2>&1 &
+OVERLAY_SHARED_SECRET="$shared_secret" \
+OVERLAY_CONTROL_URL="http://$control_addr" \
+cargo run -p home-node -- --config "$home_config" >"$home_log" 2>&1 &
 home_pid=$!
 
 cleanup() {
@@ -72,7 +74,7 @@ grep -q "paired macbook with http://$control_addr" "$pair_log"
 
 OVERLAY_HOME="$home_dir" cargo run -p linux-client --bin overlay -- \
   devices >"$devices_log"
-grep -q "node-home ssh overlay@127.0.0.1:2222" "$devices_log"
+grep -q "node-home ssh overlay@127.0.0.1:17001" "$devices_log"
 
 if OVERLAY_HOME="$home_dir" cargo run -p linux-client --bin overlay -- ssh sync \
   >"$workdir/should-fail.log" 2>&1; then
