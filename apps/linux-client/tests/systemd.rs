@@ -98,26 +98,49 @@ async fn init_control_renders_units_and_enables_services() -> anyhow::Result<()>
 
     let control_unit = fs::read_to_string(&control_unit_path)?;
     assert!(control_unit.contains(&format!(
-        "ExecStart={} serve control-plane --config {}",
-        temp.path().join("usr/bin/medium").display(),
-        temp.path().join("etc/medium/control.toml").display()
+        "ExecStart={}",
+        temp.path().join("usr/bin/control-plane").display()
     )));
     assert!(control_unit.contains(&format!(
-        "Environment=MEDIUM_CONTROL_DATABASE_URL=sqlite://{}",
+        "Environment=OVERLAY_CONTROL_BIND_ADDR={}",
+        "0.0.0.0:8080"
+    )));
+    assert!(control_unit.contains(&format!(
+        "Environment=OVERLAY_CONTROL_DATABASE_URL=sqlite://{}",
         temp.path().join("var/lib/medium/control-plane.db").display()
+    )));
+    let control_config = fs::read_to_string(temp.path().join("etc/medium/control.toml"))?;
+    let shared_secret_line = control_config
+        .lines()
+        .find(|line| line.starts_with("shared_secret = "))
+        .expect("shared_secret should be present in control config");
+    let shared_secret = shared_secret_line
+        .trim_start_matches("shared_secret = \"")
+        .trim_end_matches('"');
+    assert!(control_unit.contains(&format!(
+        "Environment=OVERLAY_SHARED_SECRET={shared_secret}"
     )));
     assert!(control_unit.contains(&format!(
         "WorkingDirectory={}",
         temp.path().join("var/lib/medium").display()
     )));
+    assert!(!control_unit.contains("medium serve"));
+    assert!(!control_unit.contains("MEDIUM_CONTROL_DATABASE_URL"));
 
     let node_unit = fs::read_to_string(&node_unit_path)?;
     assert!(node_unit.contains(&format!(
-        "ExecStart={} serve home-node --config {}",
-        temp.path().join("usr/bin/medium").display(),
+        "ExecStart={} --config {}",
+        temp.path().join("usr/bin/home-node").display(),
         temp.path().join("etc/medium/node.toml").display()
     )));
-    assert!(node_unit.contains("Environment=MEDIUM_CONTROL_URL=http://127.0.0.1:8080"));
+    assert!(node_unit.contains(
+        "Environment=OVERLAY_CONTROL_URL=https://control.example.test"
+    ));
+    assert!(node_unit.contains(&format!(
+        "Environment=OVERLAY_SHARED_SECRET={shared_secret}"
+    )));
+    assert!(!node_unit.contains("medium serve"));
+    assert!(!node_unit.contains("http://127.0.0.1:8080"));
 
     let template_root = repo_root().join("packaging/systemd");
     assert!(template_root.join("medium-control-plane.service").is_file());

@@ -6,7 +6,6 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const DEFAULT_CONTROL_BIND_ADDR: &str = "0.0.0.0:8080";
-const DEFAULT_CONTROL_URL: &str = "http://127.0.0.1:8080";
 const DEFAULT_NODE_ID: &str = "node-home";
 const DEFAULT_SSH_SERVICE_ID: &str = "svc_home_ssh";
 const DEFAULT_SSH_TARGET: &str = "127.0.0.1:22";
@@ -121,7 +120,7 @@ fn init_control_at(
         DEFAULT_SSH_SERVICE_ID,
     )?;
     touch_file(&layout.database_path)?;
-    write_systemd_units(&layout, root)?;
+    write_systemd_units(&layout, root, bind_addr, control_url, &shared_secret)?;
     maybe_enable_systemd_services(root)?;
 
     Ok(InitControlReport {
@@ -200,47 +199,71 @@ fn write_home_node_config(
     fs::write(path, contents).with_context(|| format!("write {}", path.display()))
 }
 
-fn write_systemd_units(layout: &InstallLayout, root: &Path) -> anyhow::Result<()> {
+fn write_systemd_units(
+    layout: &InstallLayout,
+    root: &Path,
+    bind_addr: &str,
+    control_url: &str,
+    shared_secret: &str,
+) -> anyhow::Result<()> {
     fs::create_dir_all(&layout.systemd_unit_dir)
         .with_context(|| format!("create {}", layout.systemd_unit_dir.display()))?;
     fs::write(
         &layout.control_unit_path,
-        render_control_plane_unit(root, layout),
+        render_control_plane_unit(root, layout, bind_addr, shared_secret),
     )
     .with_context(|| format!("write {}", layout.control_unit_path.display()))?;
-    fs::write(&layout.node_unit_path, render_home_node_unit(root, layout))
+    fs::write(
+        &layout.node_unit_path,
+        render_home_node_unit(root, layout, control_url, shared_secret),
+    )
         .with_context(|| format!("write {}", layout.node_unit_path.display()))?;
     Ok(())
 }
 
-fn render_control_plane_unit(root: &Path, layout: &InstallLayout) -> String {
+fn render_control_plane_unit(
+    root: &Path,
+    layout: &InstallLayout,
+    bind_addr: &str,
+    shared_secret: &str,
+) -> String {
     render_unit(
         CONTROL_PLANE_UNIT_TEMPLATE,
         &[
-            ("{{MEDIUM_BIN}}", &medium_binary_path(root).display().to_string()),
             (
-                "{{CONTROL_CONFIG_PATH}}",
-                &layout.control_config_path.display().to_string(),
+                "{{CONTROL_PLANE_BIN}}",
+                &control_plane_binary_path(root).display().to_string(),
             ),
+            ("{{CONTROL_BIND_ADDR}}", bind_addr),
             (
                 "{{DATABASE_URL}}",
                 &format!("sqlite://{}", layout.database_path.display()),
             ),
+            ("{{SHARED_SECRET}}", shared_secret),
             ("{{STATE_DIR}}", &layout.state_dir.display().to_string()),
         ],
     )
 }
 
-fn render_home_node_unit(root: &Path, layout: &InstallLayout) -> String {
+fn render_home_node_unit(
+    root: &Path,
+    layout: &InstallLayout,
+    control_url: &str,
+    shared_secret: &str,
+) -> String {
     render_unit(
         HOME_NODE_UNIT_TEMPLATE,
         &[
-            ("{{MEDIUM_BIN}}", &medium_binary_path(root).display().to_string()),
+            (
+                "{{HOME_NODE_BIN}}",
+                &home_node_binary_path(root).display().to_string(),
+            ),
             (
                 "{{NODE_CONFIG_PATH}}",
                 &layout.node_config_path.display().to_string(),
             ),
-            ("{{CONTROL_URL}}", DEFAULT_CONTROL_URL),
+            ("{{CONTROL_URL}}", control_url),
+            ("{{SHARED_SECRET}}", shared_secret),
         ],
     )
 }
@@ -253,11 +276,19 @@ fn render_unit(template: &str, replacements: &[(&str, &str)]) -> String {
     rendered
 }
 
-fn medium_binary_path(root: &Path) -> PathBuf {
+fn control_plane_binary_path(root: &Path) -> PathBuf {
     if root == Path::new("/") {
-        PathBuf::from("/usr/bin/medium")
+        PathBuf::from("/usr/bin/control-plane")
     } else {
-        root.join("usr").join("bin").join("medium")
+        root.join("usr").join("bin").join("control-plane")
+    }
+}
+
+fn home_node_binary_path(root: &Path) -> PathBuf {
+    if root == Path::new("/") {
+        PathBuf::from("/usr/bin/home-node")
+    } else {
+        root.join("usr").join("bin").join("home-node")
     }
 }
 

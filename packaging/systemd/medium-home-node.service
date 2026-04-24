@@ -5,8 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-Environment=MEDIUM_CONTROL_URL={{CONTROL_URL}}
-ExecStart={{MEDIUM_BIN}} serve home-node --config {{NODE_CONFIG_PATH}}
+Environment=OVERLAY_CONTROL_URL={{CONTROL_URL}}
+Environment=OVERLAY_SHARED_SECRET={{SHARED_SECRET}}
+ExecStart={{HOME_NODE_BIN}} --config {{NODE_CONFIG_PATH}}
 Restart=on-failure
 RestartSec=5
 

@@ -6,8 +6,10 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory={{STATE_DIR}}
-Environment=MEDIUM_CONTROL_DATABASE_URL={{DATABASE_URL}}
-ExecStart={{MEDIUM_BIN}} serve control-plane --config {{CONTROL_CONFIG_PATH}}
+Environment=OVERLAY_CONTROL_BIND_ADDR={{CONTROL_BIND_ADDR}}
+Environment=OVERLAY_CONTROL_DATABASE_URL={{DATABASE_URL}}
+Environment=OVERLAY_SHARED_SECRET={{SHARED_SECRET}}
+ExecStart={{CONTROL_PLANE_BIN}}
 Restart=on-failure
 RestartSec=5
 
