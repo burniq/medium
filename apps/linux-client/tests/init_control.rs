@@ -68,11 +68,12 @@ async fn init_control_creates_expected_paths_and_files() -> anyhow::Result<()> {
     assert!(database_path.is_file());
 
     let control_config = fs::read_to_string(&control_config_path)?;
-    assert!(control_config.contains("OVERLAY_CONTROL_BIND_ADDR=0.0.0.0:8080"));
-    assert!(control_config.contains("OVERLAY_CONTROL_URL=https://control.example.test"));
-    assert!(control_config.contains("OVERLAY_SHARED_SECRET="));
+    assert!(control_config.contains("bind_addr = \"0.0.0.0:8080\""));
+    assert!(control_config.contains("control_url = \"https://control.example.test\""));
+    assert!(control_config.contains("database_url = \"sqlite://"));
+    assert!(control_config.contains("shared_secret = \""));
     assert!(control_config.contains(&format!(
-        "OVERLAY_CONTROL_DATABASE_URL=sqlite://{}",
+        "database_url = \"sqlite://{}\"",
         database_path.display()
     )));
 
