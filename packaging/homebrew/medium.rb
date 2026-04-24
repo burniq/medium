@@ -7,7 +7,7 @@ class Medium < Formula
   version "0.1.0"
 
   def install
-    bin.install "medium"
+    bin.install "bin/medium"
   end
 
   test do

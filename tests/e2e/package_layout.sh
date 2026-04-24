@@ -3,7 +3,9 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 archive_dir="$(mktemp -d)"
-trap 'rm -rf "$archive_dir"' EXIT
+default_out_dir="$repo_root/dist/package"
+stale_file="$default_out_dir/stale.txt"
+trap 'rm -rf "$archive_dir" "$default_out_dir"' EXIT
 
 cd "$repo_root"
 
@@ -17,3 +19,12 @@ test -f "$archive_dir/systemd/medium-home-node.service"
 test -f "$archive_dir/docs/linux/README.md"
 test -f "$archive_dir/docs/linux/install-layout.txt"
 test -f "$archive_dir/homebrew/medium.rb"
+grep -Fq 'bin.install "bin/medium"' "$archive_dir/homebrew/medium.rb"
+
+mkdir -p "$default_out_dir"
+printf 'stale\n' >"$stale_file"
+
+bash scripts/package.sh
+
+test -d "$default_out_dir"
+test ! -e "$stale_file"

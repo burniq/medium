@@ -8,6 +8,15 @@ cd "$repo_root"
 
 cargo build --release -p control-plane -p home-node -p linux-client
 
+case "$out_dir" in
+  ""|"/")
+    echo "refusing to package into unsafe output path: '$out_dir'" >&2
+    exit 1
+    ;;
+esac
+
+rm -rf "$out_dir"
+
 mkdir -p \
   "$out_dir/bin" \
   "$out_dir/systemd" \
