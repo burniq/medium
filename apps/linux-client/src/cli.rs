@@ -4,9 +4,11 @@ use crate::paths::AppPaths;
 use crate::ssh::sync_ssh_config;
 use crate::state::AppState;
 use home_node::agent::prepare_agent_from_path;
-use overlay_protocol::DeviceRecord;
+use overlay_protocol::{DeviceRecord, SessionOpenGrant};
+use overlay_transport::session::{SessionHello, write_session_hello};
 use std::path::PathBuf;
-use std::process::{Command as ProcessCommand, Stdio};
+use tokio::io::{self, AsyncWriteExt};
+use tokio::net::TcpStream;
 
 const USAGE: &str = "usage: overlay [pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]";
 
@@ -109,7 +111,9 @@ where
             let devices = client_api::fetch_devices(&state)
                 .await
                 .map_err(|error| error.to_string())?;
-            run_proxy(&devices.devices, &device_name).map_err(|error| error.to_string())?;
+            run_proxy(&state, &devices.devices, &device_name)
+                .await
+                .map_err(|error| error.to_string())?;
             Ok(None)
         }
         Command::Info => Ok(Some(app::summary().to_string())),
@@ -174,7 +178,11 @@ fn render_devices(devices: &[DeviceRecord]) -> String {
         .join("\n")
 }
 
-fn run_proxy(devices: &[DeviceRecord], device_name: &str) -> anyhow::Result<()> {
+async fn run_proxy(
+    state: &AppState,
+    devices: &[DeviceRecord],
+    device_name: &str,
+) -> anyhow::Result<()> {
     let device = devices
         .iter()
         .find(|device| device.name == device_name)
@@ -183,18 +191,42 @@ fn run_proxy(devices: &[DeviceRecord], device_name: &str) -> anyhow::Result<()> 
         .ssh
         .as_ref()
         .ok_or_else(|| anyhow::anyhow!("device {} has no SSH endpoint", device_name))?;
+    let grant = client_api::open_session(state, &ssh.service_id).await?;
+    let candidate = grant
+        .authorization
+        .candidates
+        .first()
+        .ok_or_else(|| anyhow::anyhow!("session grant has no candidates"))?;
+    proxy_via_grant(&grant, candidate.addr.as_str()).await
+}
 
-    let status = ProcessCommand::new("nc")
-        .arg(&ssh.host)
-        .arg(ssh.port.to_string())
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
+async fn proxy_via_grant(grant: &SessionOpenGrant, candidate_addr: &str) -> anyhow::Result<()> {
+    let mut stream = TcpStream::connect(candidate_addr).await?;
+    write_session_hello(
+        &mut stream,
+        &SessionHello {
+            token: grant.authorization.token.clone(),
+            service_id: grant.service_id.clone(),
+        },
+    )
+    .await?;
 
-    if status.success() {
-        Ok(())
-    } else {
-        anyhow::bail!("nc exited with status {}", status)
-    }
+    let (mut read_half, mut write_half) = stream.into_split();
+    let mut stdin = io::stdin();
+    let mut stdout = io::stdout();
+
+    let stdin_to_net = tokio::spawn(async move {
+        io::copy(&mut stdin, &mut write_half).await?;
+        write_half.shutdown().await?;
+        anyhow::Ok(())
+    });
+    let net_to_stdout = tokio::spawn(async move {
+        io::copy(&mut read_half, &mut stdout).await?;
+        stdout.flush().await?;
+        anyhow::Ok(())
+    });
+
+    stdin_to_net.await??;
+    net_to_stdout.await??;
+    Ok(())
 }

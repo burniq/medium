@@ -1,5 +1,8 @@
 use chrono::{DateTime, Duration, Utc};
+use hmac::{Hmac, Mac};
 use rcgen::{CertificateParams, DistinguishedName, DnType, KeyPair};
+use serde::{Deserialize, Serialize};
+use sha2::Sha256;
 
 pub fn issue_bootstrap_code() -> String {
     format!("ovr-{}", uuid::Uuid::new_v4().simple())
@@ -17,4 +20,75 @@ pub fn issue_node_cert(
     let cert = params.self_signed(&KeyPair::generate()?)?;
     let expires_at = Utc::now() + Duration::hours(24);
     Ok((cert.pem(), expires_at))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionTokenClaims {
+    pub session_id: String,
+    pub service_id: String,
+    pub home_node_id: String,
+    pub expires_at: DateTime<Utc>,
+}
+
+pub fn issue_session_token(
+    shared_secret: &str,
+    session_id: &str,
+    service_id: &str,
+    home_node_id: &str,
+) -> anyhow::Result<String> {
+    let claims = SessionTokenClaims {
+        session_id: session_id.to_string(),
+        service_id: service_id.to_string(),
+        home_node_id: home_node_id.to_string(),
+        expires_at: Utc::now() + Duration::minutes(2),
+    };
+    let payload = serde_json::to_vec(&claims)?;
+    let signature = sign_payload(shared_secret, &payload)?;
+    let payload_b64 = base64::Engine::encode(
+        &base64::engine::general_purpose::URL_SAFE_NO_PAD,
+        payload,
+    );
+    let signature_b64 = base64::Engine::encode(
+        &base64::engine::general_purpose::URL_SAFE_NO_PAD,
+        signature,
+    );
+    Ok(format!("{payload_b64}.{signature_b64}"))
+}
+
+pub fn verify_session_token(
+    shared_secret: &str,
+    token: &str,
+) -> anyhow::Result<SessionTokenClaims> {
+    let (payload_b64, signature_b64) = token
+        .split_once('.')
+        .ok_or_else(|| anyhow::anyhow!("invalid session token format"))?;
+    let payload = base64::Engine::decode(
+        &base64::engine::general_purpose::URL_SAFE_NO_PAD,
+        payload_b64,
+    )
+    .map_err(|error| anyhow::anyhow!("invalid session token payload: {error}"))?;
+    let signature = base64::Engine::decode(
+        &base64::engine::general_purpose::URL_SAFE_NO_PAD,
+        signature_b64,
+    )
+    .map_err(|error| anyhow::anyhow!("invalid session token signature encoding: {error}"))?;
+    let expected_signature = sign_payload(shared_secret, &payload)?;
+
+    if signature != expected_signature {
+        anyhow::bail!("invalid session token signature");
+    }
+
+    let claims: SessionTokenClaims = serde_json::from_slice(&payload)?;
+    if claims.expires_at < Utc::now() {
+        anyhow::bail!("session token expired");
+    }
+
+    Ok(claims)
+}
+
+fn sign_payload(shared_secret: &str, payload: &[u8]) -> anyhow::Result<Vec<u8>> {
+    let mut mac = Hmac::<Sha256>::new_from_slice(shared_secret.as_bytes())
+        .map_err(|error| anyhow::anyhow!("invalid HMAC key: {error}"))?;
+    mac.update(payload);
+    Ok(mac.finalize().into_bytes().to_vec())
 }

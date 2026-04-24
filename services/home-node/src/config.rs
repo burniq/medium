@@ -4,6 +4,8 @@ use std::path::Path;
 #[derive(Debug, Deserialize)]
 pub struct NodeConfig {
     pub node_id: String,
+    #[serde(default = "default_bind_addr")]
+    pub bind_addr: String,
     pub services: Vec<ServiceConfig>,
 }
 
@@ -19,4 +21,8 @@ pub fn load_from_path(path: impl AsRef<Path>) -> anyhow::Result<NodeConfig> {
     let raw = std::fs::read_to_string(path)?;
     let cfg = toml::from_str(&raw)?;
     Ok(cfg)
+}
+
+fn default_bind_addr() -> String {
+    "127.0.0.1:17001".into()
 }

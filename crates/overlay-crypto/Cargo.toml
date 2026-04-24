@@ -6,6 +6,11 @@ version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+base64 = "0.22"
 chrono.workspace = true
+hmac = "0.12"
 rcgen.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2 = "0.10"
 uuid.workspace = true

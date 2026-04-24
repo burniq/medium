@@ -1,5 +1,6 @@
 use overlay_protocol::{PeerCandidate, SessionAuthorization, SessionOpenGrant};
-use overlay_transport::session::session_alpn;
+use overlay_transport::session::{SessionHello, read_session_hello, session_alpn, write_session_hello};
+use tokio::io::duplex;
 
 #[test]
 fn uses_overlay_alpn() {
@@ -23,4 +24,23 @@ fn session_grant_contains_candidate_for_direct_connect() {
     };
 
     assert_eq!(grant.authorization.candidates.len(), 1);
+}
+
+#[tokio::test]
+async fn session_hello_round_trips_over_stream() {
+    let (mut client, mut server) = duplex(1024);
+    let expected = SessionHello {
+        token: "signed-token".into(),
+        service_id: "svc_home_ssh".into(),
+    };
+
+    let writer = tokio::spawn(async move {
+        write_session_hello(&mut client, &expected).await.unwrap();
+    });
+
+    let actual = read_session_hello(&mut server).await.unwrap();
+    writer.await.unwrap();
+
+    assert_eq!(actual.service_id, "svc_home_ssh");
+    assert_eq!(actual.token, "signed-token");
 }

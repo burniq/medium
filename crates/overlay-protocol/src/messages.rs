@@ -58,6 +58,7 @@ pub struct DeviceRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SshEndpoint {
+    pub service_id: String,
     pub host: String,
     pub port: u16,
     pub user: String,

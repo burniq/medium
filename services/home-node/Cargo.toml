@@ -6,8 +6,11 @@ version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+overlay-crypto = { path = "../../crates/overlay-crypto" }
 overlay-protocol = { path = "../../crates/overlay-protocol" }
+overlay-transport = { path = "../../crates/overlay-transport" }
 serde.workspace = true
 tokio.workspace = true
 toml = "0.9"
 tracing.workspace = true
+tracing-subscriber.workspace = true

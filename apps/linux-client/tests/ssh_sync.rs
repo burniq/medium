@@ -8,6 +8,7 @@ fn sample_device() -> DeviceRecord {
         id: "node-home".into(),
         name: "node-home".into(),
         ssh: Some(SshEndpoint {
+            service_id: "svc_home_ssh".into(),
             host: "127.0.0.1".into(),
             port: 2222,
             user: "overlay".into(),
@@ -60,6 +61,7 @@ fn sync_creates_backup_before_rewriting_managed_config() -> anyhow::Result<()> {
         id: "node-lab".into(),
         name: "node-lab".into(),
         ssh: Some(SshEndpoint {
+            service_id: "svc_lab_ssh".into(),
             host: "127.0.0.1".into(),
             port: 2201,
             user: "nikita".into(),

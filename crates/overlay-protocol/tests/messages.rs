@@ -24,6 +24,7 @@ fn device_catalog_round_trips_as_json() {
             id: "node-home".into(),
             name: "node-home".into(),
             ssh: Some(SshEndpoint {
+                service_id: "svc_home_ssh".into(),
                 host: "127.0.0.1".into(),
                 port: 2222,
                 user: "overlay".into(),
@@ -36,5 +37,6 @@ fn device_catalog_round_trips_as_json() {
 
     assert_eq!(parsed.devices.len(), 1);
     assert_eq!(parsed.devices[0].name, "node-home");
+    assert_eq!(parsed.devices[0].ssh.as_ref().unwrap().service_id, "svc_home_ssh");
     assert_eq!(parsed.devices[0].ssh.as_ref().unwrap().port, 2222);
 }

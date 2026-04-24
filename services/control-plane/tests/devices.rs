@@ -24,5 +24,9 @@ async fn devices_route_returns_catalog() {
 
     assert_eq!(devices.len(), 1);
     assert_eq!(devices[0].get("name").unwrap(), "node-home");
+    assert_eq!(
+        devices[0].get("ssh").unwrap().get("service_id").unwrap(),
+        "svc_home_ssh"
+    );
     assert_eq!(devices[0].get("ssh").unwrap().get("port").unwrap(), 2222);
 }
