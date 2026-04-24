@@ -103,6 +103,35 @@ fn sync_removes_stale_overlay_include_once_medium_include_exists() -> anyhow::Re
 }
 
 #[test]
+fn sync_preserves_user_owned_overlay_include() -> anyhow::Result<()> {
+    let home = tempfile::tempdir()?;
+    let paths = AppPaths::from_home(home.path());
+    let legacy_overlay_path = paths.ssh_config_dir.join("overlay.conf");
+
+    fs::create_dir_all(&paths.ssh_config_dir)?;
+    fs::write(
+        &paths.ssh_config_path,
+        "Include ~/.ssh/config.d/overlay.conf\n",
+    )?;
+    fs::write(
+        &legacy_overlay_path,
+        "Host corp-bastion\n  HostName bastion.example.com\n  User alice\n",
+    )?;
+
+    sync_ssh_config(&paths, &[sample_device()], true)?;
+
+    let main_config = fs::read_to_string(&paths.ssh_config_path)?;
+    assert!(main_config.contains("Include ~/.ssh/config.d/overlay.conf"));
+    assert!(main_config.contains("Include ~/.ssh/config.d/medium.conf"));
+
+    let overlay_config = fs::read_to_string(&legacy_overlay_path)?;
+    assert!(overlay_config.contains("Host corp-bastion"));
+    assert!(!overlay_config.contains("Legacy overlay SSH config disabled by medium."));
+
+    Ok(())
+}
+
+#[test]
 fn sync_writes_include_and_managed_medium_config() -> anyhow::Result<()> {
     let home = tempfile::tempdir()?;
     let paths = AppPaths::from_home(home.path());

@@ -22,8 +22,10 @@ pub fn sync_ssh_config(
     std::fs::create_dir_all(&paths.ssh_dir)?;
     std::fs::create_dir_all(&paths.ssh_config_dir)?;
 
-    let managed_backup_path = backup_managed_state(paths)?;
-    let main_config_updated = ensure_main_include(paths, write_main_config)?;
+    let legacy_overlay_is_managed = legacy_overlay_config_is_managed(paths)?;
+    let managed_backup_path = backup_managed_state(paths, legacy_overlay_is_managed)?;
+    let main_config_updated =
+        ensure_main_include(paths, write_main_config, legacy_overlay_is_managed)?;
 
     let managed = render_managed_config(devices);
     atomic_write(&paths.overlay_ssh_config_path, managed.as_bytes())?;
@@ -36,7 +38,11 @@ pub fn sync_ssh_config(
     })
 }
 
-fn ensure_main_include(paths: &AppPaths, write_main_config: bool) -> anyhow::Result<bool> {
+fn ensure_main_include(
+    paths: &AppPaths,
+    write_main_config: bool,
+    legacy_overlay_is_managed: bool,
+) -> anyhow::Result<bool> {
     let current = if paths.ssh_config_path.exists() {
         std::fs::read_to_string(&paths.ssh_config_path)?
     } else {
@@ -49,7 +55,7 @@ fn ensure_main_include(paths: &AppPaths, write_main_config: bool) -> anyhow::Res
 
     for line in current.lines() {
         match line.trim() {
-            LEGACY_MAIN_INCLUDE_LINE => {
+            LEGACY_MAIN_INCLUDE_LINE if legacy_overlay_is_managed => {
                 needs_rewrite = true;
             }
             MAIN_INCLUDE_LINE if has_medium_include => {
@@ -119,7 +125,10 @@ fn atomic_write(path: &Path, contents: &[u8]) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn backup_managed_state(paths: &AppPaths) -> anyhow::Result<Option<PathBuf>> {
+fn backup_managed_state(
+    paths: &AppPaths,
+    legacy_overlay_is_managed: bool,
+) -> anyhow::Result<Option<PathBuf>> {
     let mut managed_backup_path = None;
 
     if paths.overlay_ssh_config_path.exists() {
@@ -127,7 +136,7 @@ fn backup_managed_state(paths: &AppPaths) -> anyhow::Result<Option<PathBuf>> {
     }
 
     let legacy_overlay_path = legacy_overlay_ssh_config_path(paths);
-    if legacy_overlay_path.exists() {
+    if legacy_overlay_is_managed && legacy_overlay_path.exists() {
         let backup = backup_file(&legacy_overlay_path)?;
         if managed_backup_path.is_none() {
             managed_backup_path = Some(backup);
@@ -143,8 +152,7 @@ fn neutralize_legacy_overlay_config(paths: &AppPaths) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let current = std::fs::read_to_string(&legacy_overlay_path)?;
-    if !is_legacy_overlay_managed_config(&current) {
+    if !legacy_overlay_config_is_managed(paths)? {
         return Ok(());
     }
 
@@ -159,6 +167,16 @@ fn legacy_overlay_ssh_config_path(paths: &AppPaths) -> PathBuf {
 
 fn is_legacy_overlay_managed_config(contents: &str) -> bool {
     contents.contains(LEGACY_MANAGED_HEADER) || contents.contains(LEGACY_PROXY_COMMAND)
+}
+
+fn legacy_overlay_config_is_managed(paths: &AppPaths) -> anyhow::Result<bool> {
+    let legacy_overlay_path = legacy_overlay_ssh_config_path(paths);
+    if !legacy_overlay_path.exists() {
+        return Ok(false);
+    }
+
+    let current = std::fs::read_to_string(&legacy_overlay_path)?;
+    Ok(is_legacy_overlay_managed_config(&current))
 }
 
 fn backup_file(path: &Path) -> anyhow::Result<PathBuf> {
