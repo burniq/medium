@@ -2,13 +2,19 @@ use crate::client_api;
 use anyhow::{Context, bail};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const DEFAULT_CONTROL_BIND_ADDR: &str = "0.0.0.0:8080";
+const DEFAULT_CONTROL_URL: &str = "http://127.0.0.1:8080";
 const DEFAULT_NODE_ID: &str = "node-home";
 const DEFAULT_SSH_SERVICE_ID: &str = "svc_home_ssh";
 const DEFAULT_SSH_TARGET: &str = "127.0.0.1:22";
 const DEFAULT_SSH_USER: &str = "overlay";
+const CONTROL_PLANE_UNIT_TEMPLATE: &str =
+    include_str!("../../../packaging/systemd/medium-control-plane.service");
+const HOME_NODE_UNIT_TEMPLATE: &str =
+    include_str!("../../../packaging/systemd/medium-home-node.service");
 
 #[allow(dead_code)]
 pub struct InitControlReport {
@@ -21,22 +27,29 @@ pub struct InitControlReport {
 struct InstallLayout {
     config_dir: PathBuf,
     state_dir: PathBuf,
+    systemd_unit_dir: PathBuf,
     control_config_path: PathBuf,
     node_config_path: PathBuf,
     database_path: PathBuf,
+    control_unit_path: PathBuf,
+    node_unit_path: PathBuf,
 }
 
 impl InstallLayout {
     fn new(root: &Path) -> Self {
         let config_dir = root.join("etc").join("medium");
         let state_dir = root.join("var").join("lib").join("medium");
+        let systemd_unit_dir = root.join("etc").join("systemd").join("system");
 
         Self {
             control_config_path: config_dir.join("control.toml"),
             node_config_path: config_dir.join("node.toml"),
             database_path: state_dir.join("control-plane.db"),
+            control_unit_path: systemd_unit_dir.join("medium-control-plane.service"),
+            node_unit_path: systemd_unit_dir.join("medium-home-node.service"),
             config_dir,
             state_dir,
+            systemd_unit_dir,
         }
     }
 
@@ -108,6 +121,8 @@ fn init_control_at(
         DEFAULT_SSH_SERVICE_ID,
     )?;
     touch_file(&layout.database_path)?;
+    write_systemd_units(&layout, root)?;
+    maybe_enable_systemd_services(root)?;
 
     Ok(InitControlReport {
         control_config_path: layout.control_config_path,
@@ -183,6 +198,113 @@ fn write_home_node_config(
         "node_id = \"{node_id}\"\nnode_label = \"{node_id}\"\nbind_addr = \"{bind_addr}\"\n\n[[services]]\nid = \"{ssh_service_id}\"\nkind = \"ssh\"\ntarget = \"{DEFAULT_SSH_TARGET}\"\nuser_name = \"{DEFAULT_SSH_USER}\"\n"
     );
     fs::write(path, contents).with_context(|| format!("write {}", path.display()))
+}
+
+fn write_systemd_units(layout: &InstallLayout, root: &Path) -> anyhow::Result<()> {
+    fs::create_dir_all(&layout.systemd_unit_dir)
+        .with_context(|| format!("create {}", layout.systemd_unit_dir.display()))?;
+    fs::write(
+        &layout.control_unit_path,
+        render_control_plane_unit(root, layout),
+    )
+    .with_context(|| format!("write {}", layout.control_unit_path.display()))?;
+    fs::write(&layout.node_unit_path, render_home_node_unit(root, layout))
+        .with_context(|| format!("write {}", layout.node_unit_path.display()))?;
+    Ok(())
+}
+
+fn render_control_plane_unit(root: &Path, layout: &InstallLayout) -> String {
+    render_unit(
+        CONTROL_PLANE_UNIT_TEMPLATE,
+        &[
+            ("{{MEDIUM_BIN}}", &medium_binary_path(root).display().to_string()),
+            (
+                "{{CONTROL_CONFIG_PATH}}",
+                &layout.control_config_path.display().to_string(),
+            ),
+            (
+                "{{DATABASE_URL}}",
+                &format!("sqlite://{}", layout.database_path.display()),
+            ),
+            ("{{STATE_DIR}}", &layout.state_dir.display().to_string()),
+        ],
+    )
+}
+
+fn render_home_node_unit(root: &Path, layout: &InstallLayout) -> String {
+    render_unit(
+        HOME_NODE_UNIT_TEMPLATE,
+        &[
+            ("{{MEDIUM_BIN}}", &medium_binary_path(root).display().to_string()),
+            (
+                "{{NODE_CONFIG_PATH}}",
+                &layout.node_config_path.display().to_string(),
+            ),
+            ("{{CONTROL_URL}}", DEFAULT_CONTROL_URL),
+        ],
+    )
+}
+
+fn render_unit(template: &str, replacements: &[(&str, &str)]) -> String {
+    let mut rendered = template.to_string();
+    for (needle, replacement) in replacements {
+        rendered = rendered.replace(needle, replacement);
+    }
+    rendered
+}
+
+fn medium_binary_path(root: &Path) -> PathBuf {
+    if root == Path::new("/") {
+        PathBuf::from("/usr/bin/medium")
+    } else {
+        root.join("usr").join("bin").join("medium")
+    }
+}
+
+fn maybe_enable_systemd_services(root: &Path) -> anyhow::Result<()> {
+    if root != Path::new("/") && env_string("MEDIUM_SYSTEMCTL_BIN").is_none() {
+        return Ok(());
+    }
+
+    let systemctl = systemctl_bin();
+    run_command(&systemctl, &["daemon-reload"])?;
+    run_command(
+        &systemctl,
+        &["enable", "--now", "medium-control-plane.service"],
+    )?;
+    run_command(&systemctl, &["enable", "--now", "medium-home-node.service"])?;
+    Ok(())
+}
+
+fn systemctl_bin() -> String {
+    env_string("MEDIUM_SYSTEMCTL_BIN").unwrap_or_else(|| "systemctl".into())
+}
+
+fn run_command(command: &str, args: &[&str]) -> anyhow::Result<()> {
+    let output = Command::new(command)
+        .args(args)
+        .output()
+        .with_context(|| format!("run {} {}", command, args.join(" ")))?;
+    if output.status.success() {
+        return Ok(());
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    if stderr.is_empty() {
+        bail!(
+            "command failed: {} {} (status {})",
+            command,
+            args.join(" "),
+            output.status
+        );
+    }
+
+    bail!(
+        "command failed: {} {}: {}",
+        command,
+        args.join(" "),
+        stderr
+    );
 }
 
 fn touch_file(path: &Path) -> anyhow::Result<()> {

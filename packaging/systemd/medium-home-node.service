@@ -1,0 +1,14 @@
+[Unit]
+Description=Medium Home Node
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=MEDIUM_CONTROL_URL={{CONTROL_URL}}
+ExecStart={{MEDIUM_BIN}} serve home-node --config {{NODE_CONFIG_PATH}}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
