@@ -131,7 +131,7 @@ fn init_control_at(
     })
 }
 
-fn install_root() -> PathBuf {
+pub(crate) fn install_root() -> PathBuf {
     std::env::var_os("MEDIUM_ROOT")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("/"))
@@ -276,7 +276,7 @@ fn render_unit(template: &str, replacements: &[(&str, &str)]) -> String {
     rendered
 }
 
-fn control_plane_binary_path(root: &Path) -> PathBuf {
+pub(crate) fn control_plane_binary_path(root: &Path) -> PathBuf {
     if root == Path::new("/") {
         PathBuf::from("/usr/bin/control-plane")
     } else {
@@ -284,7 +284,7 @@ fn control_plane_binary_path(root: &Path) -> PathBuf {
     }
 }
 
-fn home_node_binary_path(root: &Path) -> PathBuf {
+pub(crate) fn home_node_binary_path(root: &Path) -> PathBuf {
     if root == Path::new("/") {
         PathBuf::from("/usr/bin/home-node")
     } else {
@@ -307,7 +307,7 @@ fn maybe_enable_systemd_services(root: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn systemctl_bin() -> String {
+pub(crate) fn systemctl_bin() -> String {
     env_string("MEDIUM_SYSTEMCTL_BIN").unwrap_or_else(|| "systemctl".into())
 }
 

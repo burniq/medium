@@ -6,6 +6,8 @@ use crate::state::AppState;
 use crate::state::invite;
 #[path = "install.rs"]
 mod install;
+#[path = "doctor.rs"]
+mod doctor;
 use home_node::agent::prepare_agent_from_path;
 use overlay_protocol::{DeviceRecord, SessionOpenGrant};
 use overlay_transport::session::{SessionHello, write_session_hello};
@@ -13,7 +15,7 @@ use std::path::PathBuf;
 use tokio::io::{self, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-const USAGE: &str = "usage: medium [join <invite> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]\nusage: medium [init-control [--reconfigure] | join <invite> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]";
+const USAGE: &str = "usage: medium [join <invite> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]\nusage: medium [init-control [--reconfigure] | join <invite> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]\nusage: medium [init-control [--reconfigure] | join <invite> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | doctor | run --config <path> | info | normalize-label <value>]";
 
 enum Command {
     InitControl {
@@ -36,6 +38,7 @@ enum Command {
     ProxySsh {
         device_name: String,
     },
+    Doctor,
     Info,
     NormalizeLabel {
         value: String,
@@ -58,7 +61,8 @@ where
         | Command::Pair { .. }
         | Command::Devices
         | Command::SshSync { .. }
-        | Command::ProxySsh { .. } => Err("command requires runtime context; use run_main".into()),
+        | Command::ProxySsh { .. }
+        | Command::Doctor => Err("command requires runtime context; use run_main".into()),
     }
 }
 
@@ -147,6 +151,11 @@ where
                 .map_err(|error| error.to_string())?;
             Ok(None)
         }
+        Command::Doctor => {
+            let paths = AppPaths::from_env().map_err(|error| error.to_string())?;
+            let report = doctor::inspect(&paths).map_err(|error| error.to_string())?;
+            Ok(Some(report.render()))
+        }
         Command::Info => Ok(Some(app::summary().to_string())),
         Command::NormalizeLabel { value } => Ok(Some(app::normalize_device_label(&value))),
     }
@@ -194,6 +203,7 @@ where
                 device_name: device_name.clone(),
             })
         }
+        [_binary, command] if command == "doctor" => Ok(Command::Doctor),
         [_binary, command, flag, path] if command == "run" && flag == "--config" => {
             Ok(Command::Run {
                 config_path: PathBuf::from(path),
