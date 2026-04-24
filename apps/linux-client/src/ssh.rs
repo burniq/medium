@@ -3,6 +3,9 @@ use overlay_protocol::DeviceRecord;
 use std::path::{Path, PathBuf};
 
 const MAIN_INCLUDE_LINE: &str = "Include ~/.ssh/config.d/medium.conf";
+const LEGACY_MAIN_INCLUDE_LINE: &str = "Include ~/.ssh/config.d/overlay.conf";
+const LEGACY_MANAGED_HEADER: &str = "# Managed by overlay.";
+const LEGACY_PROXY_COMMAND: &str = "ProxyCommand overlay proxy ssh --device ";
 
 #[derive(Debug)]
 pub struct SyncReport {
@@ -19,15 +22,12 @@ pub fn sync_ssh_config(
     std::fs::create_dir_all(&paths.ssh_dir)?;
     std::fs::create_dir_all(&paths.ssh_config_dir)?;
 
+    let managed_backup_path = backup_managed_state(paths)?;
     let main_config_updated = ensure_main_include(paths, write_main_config)?;
-    let managed_backup_path = if paths.overlay_ssh_config_path.exists() {
-        Some(backup_file(&paths.overlay_ssh_config_path)?)
-    } else {
-        None
-    };
 
     let managed = render_managed_config(devices);
     atomic_write(&paths.overlay_ssh_config_path, managed.as_bytes())?;
+    neutralize_legacy_overlay_config(paths)?;
 
     Ok(SyncReport {
         main_config_updated,
@@ -43,26 +43,49 @@ fn ensure_main_include(paths: &AppPaths, write_main_config: bool) -> anyhow::Res
         String::new()
     };
 
-    if current.lines().any(|line| line.trim() == MAIN_INCLUDE_LINE) {
-        return Ok(false);
+    let mut kept_lines = Vec::new();
+    let mut has_medium_include = false;
+    let mut needs_rewrite = false;
+
+    for line in current.lines() {
+        match line.trim() {
+            LEGACY_MAIN_INCLUDE_LINE => {
+                needs_rewrite = true;
+            }
+            MAIN_INCLUDE_LINE if has_medium_include => {
+                needs_rewrite = true;
+            }
+            MAIN_INCLUDE_LINE => {
+                has_medium_include = true;
+                kept_lines.push(line);
+            }
+            _ => kept_lines.push(line),
+        }
     }
 
-    if !write_main_config {
+    if !has_medium_include && !write_main_config {
         anyhow::bail!(
             "main SSH config is missing medium include; re-run with --write-main-config"
         );
+    }
+
+    if !has_medium_include {
+        kept_lines.push(MAIN_INCLUDE_LINE);
+        needs_rewrite = true;
+    }
+
+    if !needs_rewrite {
+        return Ok(false);
     }
 
     if paths.ssh_config_path.exists() {
         let _ = backup_file(&paths.ssh_config_path)?;
     }
 
-    let mut next = current;
-    if !next.is_empty() && !next.ends_with('\n') {
+    let mut next = kept_lines.join("\n");
+    if !next.is_empty() {
         next.push('\n');
     }
-    next.push_str(MAIN_INCLUDE_LINE);
-    next.push('\n');
 
     atomic_write(&paths.ssh_config_path, next.as_bytes())?;
     Ok(true)
@@ -94,6 +117,48 @@ fn atomic_write(path: &Path, contents: &[u8]) -> anyhow::Result<()> {
     std::fs::write(&tmp, contents)?;
     std::fs::rename(tmp, path)?;
     Ok(())
+}
+
+fn backup_managed_state(paths: &AppPaths) -> anyhow::Result<Option<PathBuf>> {
+    let mut managed_backup_path = None;
+
+    if paths.overlay_ssh_config_path.exists() {
+        managed_backup_path = Some(backup_file(&paths.overlay_ssh_config_path)?);
+    }
+
+    let legacy_overlay_path = legacy_overlay_ssh_config_path(paths);
+    if legacy_overlay_path.exists() {
+        let backup = backup_file(&legacy_overlay_path)?;
+        if managed_backup_path.is_none() {
+            managed_backup_path = Some(backup);
+        }
+    }
+
+    Ok(managed_backup_path)
+}
+
+fn neutralize_legacy_overlay_config(paths: &AppPaths) -> anyhow::Result<()> {
+    let legacy_overlay_path = legacy_overlay_ssh_config_path(paths);
+    if !legacy_overlay_path.exists() {
+        return Ok(());
+    }
+
+    let current = std::fs::read_to_string(&legacy_overlay_path)?;
+    if !is_legacy_overlay_managed_config(&current) {
+        return Ok(());
+    }
+
+    let stub = "# Legacy overlay SSH config disabled by medium.\n# Managed entries moved to medium.conf.\n";
+    atomic_write(&legacy_overlay_path, stub.as_bytes())?;
+    Ok(())
+}
+
+fn legacy_overlay_ssh_config_path(paths: &AppPaths) -> PathBuf {
+    paths.ssh_config_dir.join("overlay.conf")
+}
+
+fn is_legacy_overlay_managed_config(contents: &str) -> bool {
+    contents.contains(LEGACY_MANAGED_HEADER) || contents.contains(LEGACY_PROXY_COMMAND)
 }
 
 fn backup_file(path: &Path) -> anyhow::Result<PathBuf> {

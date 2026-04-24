@@ -76,6 +76,19 @@ OVERLAY_HOME="$home_dir" cargo run -p linux-client --bin medium -- \
   devices >"$devices_log"
 grep -q "node-home ssh overlay@127.0.0.1:17001" "$devices_log"
 
+mkdir -p "$home_dir/.ssh/config.d"
+cat >"$home_dir/.ssh/config" <<EOF
+Include ~/.ssh/config.d/overlay.conf
+EOF
+cat >"$home_dir/.ssh/config.d/overlay.conf" <<EOF
+# Managed by overlay. DO NOT EDIT.
+
+Host node-home
+  HostName node-home
+  User overlay
+  ProxyCommand overlay proxy ssh --device node-home
+EOF
+
 if OVERLAY_HOME="$home_dir" cargo run -p linux-client --bin medium -- ssh sync \
   >"$workdir/should-fail.log" 2>&1; then
   echo "ssh sync unexpectedly succeeded without --write-main-config" >&2
@@ -87,8 +100,16 @@ OVERLAY_HOME="$home_dir" cargo run -p linux-client --bin medium -- \
   ssh sync --write-main-config >"$sync_log"
 grep -q "synced 1 SSH hosts" "$sync_log"
 grep -q "Include ~/.ssh/config.d/medium.conf" "$home_dir/.ssh/config"
+if grep -q "Include ~/.ssh/config.d/overlay.conf" "$home_dir/.ssh/config"; then
+  echo "legacy overlay include survived migration" >&2
+  exit 1
+fi
 grep -q "Host node-home" "$home_dir/.ssh/config.d/medium.conf"
 grep -q "ProxyCommand medium proxy ssh --device node-home" "$home_dir/.ssh/config.d/medium.conf"
+if grep -q "ProxyCommand overlay proxy ssh --device node-home" "$home_dir/.ssh/config.d/overlay.conf"; then
+  echo "legacy overlay proxy command remained active" >&2
+  exit 1
+fi
 
 python3 -c 'import socket; s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(("127.0.0.1", 2222)); s.listen(1); conn, _ = s.accept(); conn.sendall(b"SSH-2.0-OverlayTest\r\n"); conn.close(); s.close()' &
 target_pid=$!
