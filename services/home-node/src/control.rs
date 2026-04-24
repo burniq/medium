@@ -1,3 +1,4 @@
+use crate::adapters::normalize_target_addr;
 use overlay_protocol::{PublishedService, RegisterNodeRequest, ServiceKind};
 
 use crate::config::NodeConfig;
@@ -14,7 +15,7 @@ pub fn build_registration(cfg: &NodeConfig) -> RegisterNodeRequest {
                     "ssh" => ServiceKind::Ssh,
                     _ => ServiceKind::Https,
                 },
-                target: svc.target.clone(),
+                target: normalize_target_addr(&svc.target),
             })
             .collect(),
     }
