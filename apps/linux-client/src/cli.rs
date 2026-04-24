@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use tokio::io::{self, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-const USAGE: &str = "usage: overlay [pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]";
+const USAGE: &str = "usage: medium [pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]";
 
 enum Command {
     Run {

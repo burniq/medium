@@ -5,7 +5,7 @@ license.workspace = true
 version.workspace = true
 
 [[bin]]
-name = "overlay"
+name = "medium"
 path = "src/main.rs"
 
 [dependencies]

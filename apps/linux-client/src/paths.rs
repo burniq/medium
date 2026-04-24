@@ -21,7 +21,7 @@ impl AppPaths {
         Self {
             state_path: app_config_dir.join("state.json"),
             ssh_config_path: ssh_dir.join("config"),
-            overlay_ssh_config_path: ssh_config_dir.join("overlay.conf"),
+            overlay_ssh_config_path: ssh_config_dir.join("medium.conf"),
             home_dir,
             app_config_dir,
             ssh_dir,

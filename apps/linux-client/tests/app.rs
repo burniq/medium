@@ -4,12 +4,17 @@ use std::fs;
 
 #[test]
 fn title_matches_product_name() {
-    assert_eq!(title(), "Overlay");
+    assert_eq!(title(), "Medium");
 }
 
 #[test]
 fn summary_marks_headless_role() {
-    assert_eq!(summary(), "Overlay CLI");
+    assert_eq!(summary(), "Medium CLI");
+}
+
+#[test]
+fn summary_mentions_medium_name() {
+    assert!(summary().contains("Medium"));
 }
 
 #[test]
@@ -19,15 +24,15 @@ fn normalize_device_label_trims_whitespace() {
 
 #[test]
 fn info_command_returns_summary_output() -> anyhow::Result<()> {
-    let output = run(vec!["overlay".to_string(), "info".to_string()]).map_err(anyhow::Error::msg)?;
-    assert_eq!(output, "Overlay CLI");
+    let output = run(vec!["medium".to_string(), "info".to_string()]).map_err(anyhow::Error::msg)?;
+    assert_eq!(output, "Medium CLI");
     Ok(())
 }
 
 #[test]
 fn run_supports_label_normalization() -> anyhow::Result<()> {
     let output = run(vec![
-        "overlay".to_string(),
+        "medium".to_string(),
         "normalize-label".to_string(),
         "  phone  ".to_string(),
     ])
@@ -38,9 +43,9 @@ fn run_supports_label_normalization() -> anyhow::Result<()> {
 
 #[test]
 fn run_requires_config_flag() {
-    let error = run(vec!["overlay".to_string(), "run".to_string()]).unwrap_err();
+    let error = run(vec!["medium".to_string(), "run".to_string()]).unwrap_err();
     assert!(
-        error.contains("usage: overlay [pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
+        error.contains("usage: medium [pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
     );
 }
 
@@ -63,7 +68,7 @@ target = "127.0.0.1:22"
     )?;
 
     let output = run(vec![
-        "overlay".to_string(),
+        "medium".to_string(),
         "run".to_string(),
         "--config".to_string(),
         config_path.display().to_string(),
@@ -79,9 +84,9 @@ target = "127.0.0.1:22"
 
 #[test]
 fn run_rejects_unknown_commands() {
-    let error = run(vec!["overlay".to_string(), "bad".to_string()]).unwrap_err();
+    let error = run(vec!["medium".to_string(), "bad".to_string()]).unwrap_err();
     assert!(
-        error.contains("usage: overlay [pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
+        error.contains("usage: medium [pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
     );
 }
 

@@ -2,7 +2,7 @@ use crate::paths::AppPaths;
 use overlay_protocol::DeviceRecord;
 use std::path::{Path, PathBuf};
 
-const MAIN_INCLUDE_LINE: &str = "Include ~/.ssh/config.d/overlay.conf";
+const MAIN_INCLUDE_LINE: &str = "Include ~/.ssh/config.d/medium.conf";
 
 #[derive(Debug)]
 pub struct SyncReport {
@@ -49,7 +49,7 @@ fn ensure_main_include(paths: &AppPaths, write_main_config: bool) -> anyhow::Res
 
     if !write_main_config {
         anyhow::bail!(
-            "main SSH config is missing overlay include; re-run with --write-main-config"
+            "main SSH config is missing medium include; re-run with --write-main-config"
         );
     }
 
@@ -69,12 +69,12 @@ fn ensure_main_include(paths: &AppPaths, write_main_config: bool) -> anyhow::Res
 }
 
 fn render_managed_config(devices: &[DeviceRecord]) -> String {
-    let mut out = String::from("# Managed by overlay. DO NOT EDIT.\n\n");
+    let mut out = String::from("# Managed by medium. DO NOT EDIT.\n\n");
 
     for device in devices.iter().filter(|device| device.ssh.is_some()) {
         let ssh = device.ssh.as_ref().expect("filtered above");
         out.push_str(&format!(
-            "# endpoint {host}:{port}\nHost {name}\n  HostName {name}\n  User {user}\n  ProxyCommand overlay proxy ssh --device {name}\n\n",
+            "# endpoint {host}:{port}\nHost {name}\n  HostName {name}\n  User {user}\n  ProxyCommand medium proxy ssh --device {name}\n\n",
             host = ssh.host,
             port = ssh.port,
             name = device.name,

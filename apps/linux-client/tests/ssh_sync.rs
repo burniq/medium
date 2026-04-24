@@ -30,7 +30,13 @@ fn sync_requires_confirmation_before_touching_main_config() {
 }
 
 #[test]
-fn sync_writes_include_and_managed_overlay_config() -> anyhow::Result<()> {
+fn ssh_sync_uses_medium_managed_file_name() {
+    let paths = AppPaths::from_home("/tmp/example-home");
+    assert!(paths.overlay_ssh_config_path.ends_with("medium.conf"));
+}
+
+#[test]
+fn sync_writes_include_and_managed_medium_config() -> anyhow::Result<()> {
     let home = tempfile::tempdir()?;
     let paths = AppPaths::from_home(home.path());
 
@@ -39,11 +45,11 @@ fn sync_writes_include_and_managed_overlay_config() -> anyhow::Result<()> {
     assert_eq!(report.hosts_written, 1);
 
     let main_config = fs::read_to_string(&paths.ssh_config_path)?;
-    assert!(main_config.contains("Include ~/.ssh/config.d/overlay.conf"));
+    assert!(main_config.contains("Include ~/.ssh/config.d/medium.conf"));
 
     let managed = fs::read_to_string(&paths.overlay_ssh_config_path)?;
     assert!(managed.contains("Host node-home"));
-    assert!(managed.contains("ProxyCommand overlay proxy ssh --device node-home"));
+    assert!(managed.contains("ProxyCommand medium proxy ssh --device node-home"));
     assert!(managed.contains("User overlay"));
     Ok(())
 }
