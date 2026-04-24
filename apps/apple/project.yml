@@ -2,11 +2,29 @@ name: OverlayApple
 options:
   minimumXcodeGenVersion: 2.40.0
 targets:
+  OverlayApp:
+    type: application
+    platform: iOS
+    sources: [OverlayApp]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: dev.homeworks.overlay.ios
   OverlayMac:
     type: application
     platform: macOS
     sources: [OverlayApp]
-  OverlayIOS:
-    type: application
-    platform: iOS
-    sources: [OverlayApp]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: dev.homeworks.overlay.macos
+  OverlayAppTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [OverlayAppTests]
+    dependencies:
+      - target: OverlayMac
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: dev.homeworks.overlay.macos.tests
