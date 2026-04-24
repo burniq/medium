@@ -1,0 +1,19 @@
+Archive contents:
+  bin/medium
+  bin/control-plane
+  bin/home-node
+  systemd/medium-control-plane.service
+  systemd/medium-home-node.service
+  docs/linux/README.md
+  docs/linux/install-layout.txt
+  homebrew/medium.rb
+
+Linux target install paths:
+  /usr/bin/medium
+  /usr/bin/control-plane
+  /usr/bin/home-node
+  /etc/systemd/system/medium-control-plane.service
+  /etc/systemd/system/medium-home-node.service
+  /etc/medium/control.toml
+  /etc/medium/node.toml
+  /var/lib/medium/control-plane.db
