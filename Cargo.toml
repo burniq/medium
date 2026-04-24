@@ -8,6 +8,7 @@ members = [
   "services/control-plane",
   "services/home-node",
   "services/relay",
+  "tools/uniffi-bindgen",
 ]
 resolver = "2"
 
