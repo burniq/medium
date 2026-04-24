@@ -82,18 +82,41 @@ esac
     Ok(())
 }
 
+fn write_unavailable_systemctl(path: &Path) -> anyhow::Result<()> {
+    fs::write(
+        path,
+        r#"#!/bin/sh
+set -eu
+printf 'not available\n' >&2
+exit 1
+"#,
+    )?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        let mut permissions = fs::metadata(path)?.permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions)?;
+    }
+    Ok(())
+}
+
 #[tokio::test]
 async fn doctor_reports_missing_client_and_server_state() -> anyhow::Result<()> {
     let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
     let temp = tempfile::tempdir()?;
     let home_dir = temp.path().join("home");
     let root_dir = temp.path().join("root");
+    let systemctl_path = temp.path().join("unavailable-systemctl.sh");
     let paths = AppPaths::from_home(&home_dir);
     fs::create_dir_all(&home_dir)?;
     fs::create_dir_all(&root_dir)?;
+    write_unavailable_systemctl(&systemctl_path)?;
 
     let _home = EnvGuard::set_path("OVERLAY_HOME", &home_dir);
     let _root = EnvGuard::set_path("MEDIUM_ROOT", &root_dir);
+    let _systemctl_bin = EnvGuard::set_path("MEDIUM_SYSTEMCTL_BIN", &systemctl_path);
 
     let output = run_main(vec!["medium".to_string(), "doctor".to_string()])
         .await
@@ -103,6 +126,8 @@ async fn doctor_reports_missing_client_and_server_state() -> anyhow::Result<()> 
     assert!(output.contains("config-dir: missing"));
     assert!(output.contains("join-state: missing"));
     assert!(output.contains("control-config: missing"));
+    assert!(output.contains("control-config-valid: missing"));
+    assert!(output.contains("node-config-valid: missing"));
     assert!(output.contains("control-db: missing"));
     assert!(output.contains("ssh-managed-config: missing"));
     assert!(output.contains("service medium-control-plane.service: unavailable"));
@@ -147,7 +172,7 @@ async fn doctor_reports_bootstrapped_files_and_service_statuses() -> anyhow::Res
     )?;
     fs::write(
         root_dir.join("etc/medium/node.toml"),
-        "node_id = \"node-home\"\nnode_label = \"node-home\"\nbind_addr = \"198.51.100.24:17001\"\n",
+        "node_id = \"node-home\"\nnode_label = \"node-home\"\nbind_addr = \"198.51.100.24:17001\"\n\n[[services]]\nid = \"svc_home_ssh\"\nkind = \"ssh\"\ntarget = \"127.0.0.1:22\"\nuser_name = \"overlay\"\n",
     )?;
     fs::write(root_dir.join("var/lib/medium/control-plane.db"), [])?;
 
@@ -164,7 +189,9 @@ async fn doctor_reports_bootstrapped_files_and_service_statuses() -> anyhow::Res
     assert!(output.contains("config-dir: ok"));
     assert!(output.contains("join-state: ok (device laptop via https://control.example.test)"));
     assert!(output.contains("control-config: ok"));
+    assert!(output.contains("control-config-valid: ok"));
     assert!(output.contains("node-config: ok"));
+    assert!(output.contains("node-config-valid: ok"));
     assert!(output.contains("control-db: ok"));
     assert!(output.contains("ssh-include: ok"));
     assert!(output.contains("ssh-managed-config: ok"));
@@ -174,5 +201,107 @@ async fn doctor_reports_bootstrapped_files_and_service_statuses() -> anyhow::Res
     assert!(output.contains(
         "service medium-home-node.service: disabled, inactive"
     ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn doctor_reads_legacy_state_and_ssh_without_migrating() -> anyhow::Result<()> {
+    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+    let temp = tempfile::tempdir()?;
+    let home_dir = temp.path().join("home");
+    let root_dir = temp.path().join("root");
+    let systemctl_path = temp.path().join("mock-systemctl.sh");
+    let paths = AppPaths::from_home(&home_dir);
+    let legacy_state_path = home_dir.join(".config/overlay/state.json");
+    let legacy_managed_path = home_dir.join(".ssh/config.d/overlay.conf");
+    fs::create_dir_all(legacy_state_path.parent().expect("legacy state dir"))?;
+    fs::create_dir_all(paths.ssh_config_dir.clone())?;
+    fs::create_dir_all(root_dir.join("etc/medium"))?;
+    fs::create_dir_all(root_dir.join("var/lib/medium"))?;
+    write_mock_systemctl(&systemctl_path)?;
+
+    fs::write(
+        &legacy_state_path,
+        r#"{
+  "server_url": "https://legacy-control.example.test",
+  "node_name": "legacy-laptop",
+  "bootstrap_code": "legacy-bootstrap",
+  "invite_version": 1
+}
+"#,
+    )?;
+    fs::write(
+        &paths.ssh_config_path,
+        "Include ~/.ssh/config.d/overlay.conf\nHost existing\n  HostName example.test\n",
+    )?;
+    fs::write(&legacy_managed_path, "Host overlay-legacy\n  HostName 198.51.100.44\n")?;
+    fs::write(
+        root_dir.join("etc/medium/control.toml"),
+        "bind_addr = \"0.0.0.0:8080\"\ndatabase_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\n",
+    )?;
+    fs::write(
+        root_dir.join("etc/medium/node.toml"),
+        "node_id = \"node-home\"\nnode_label = \"node-home\"\nbind_addr = \"198.51.100.24:17001\"\n\n[[services]]\nid = \"svc_home_ssh\"\nkind = \"ssh\"\ntarget = \"127.0.0.1:22\"\nuser_name = \"overlay\"\n",
+    )?;
+    fs::write(root_dir.join("var/lib/medium/control-plane.db"), [])?;
+
+    let _home = EnvGuard::set_path("OVERLAY_HOME", &home_dir);
+    let _root = EnvGuard::set_path("MEDIUM_ROOT", &root_dir);
+    let _systemctl_bin = EnvGuard::set_path("MEDIUM_SYSTEMCTL_BIN", &systemctl_path);
+
+    let output = run_main(vec!["medium".to_string(), "doctor".to_string()])
+        .await
+        .map_err(anyhow::Error::msg)?
+        .expect("doctor should return a report");
+
+    assert!(output.contains(
+        "join-state: ok (device legacy-laptop via https://legacy-control.example.test"
+    ));
+    assert!(output.contains("legacy state"));
+    assert!(output.contains("ssh-include: ok (legacy overlay.conf)"));
+    assert!(output.contains("ssh-managed-config: ok (legacy"));
+    assert!(!paths.state_path.exists());
+    assert!(legacy_state_path.is_file());
+    assert!(!paths.overlay_ssh_config_path.exists());
+    assert!(legacy_managed_path.is_file());
+    Ok(())
+}
+
+#[tokio::test]
+async fn doctor_reports_structurally_invalid_configs() -> anyhow::Result<()> {
+    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+    let temp = tempfile::tempdir()?;
+    let home_dir = temp.path().join("home");
+    let root_dir = temp.path().join("root");
+    let systemctl_path = temp.path().join("unavailable-systemctl.sh");
+    let paths = AppPaths::from_home(&home_dir);
+    fs::create_dir_all(&paths.app_config_dir)?;
+    fs::create_dir_all(&paths.state_dir)?;
+    fs::create_dir_all(root_dir.join("etc/medium"))?;
+    fs::create_dir_all(root_dir.join("var/lib/medium"))?;
+    write_unavailable_systemctl(&systemctl_path)?;
+
+    fs::write(
+        root_dir.join("etc/medium/control.toml"),
+        "# bind_addr = \"0.0.0.0:8080\"\n# database_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\n",
+    )?;
+    fs::write(
+        root_dir.join("etc/medium/node.toml"),
+        "# node_id = \"node-home\"\nnode_label = \"node-home\"\n",
+    )?;
+
+    let _home = EnvGuard::set_path("OVERLAY_HOME", &home_dir);
+    let _root = EnvGuard::set_path("MEDIUM_ROOT", &root_dir);
+    let _systemctl_bin = EnvGuard::set_path("MEDIUM_SYSTEMCTL_BIN", &systemctl_path);
+
+    let output = run_main(vec!["medium".to_string(), "doctor".to_string()])
+        .await
+        .map_err(anyhow::Error::msg)?
+        .expect("doctor should return a report");
+
+    assert!(output.contains("control-config: ok"));
+    assert!(output.contains("control-config-valid: invalid"));
+    assert!(output.contains("node-config: ok"));
+    assert!(output.contains("node-config-valid: invalid"));
     Ok(())
 }
