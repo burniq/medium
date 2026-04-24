@@ -1,5 +1,6 @@
 use crate::paths::AppPaths;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppState {
@@ -10,8 +11,17 @@ pub struct AppState {
 
 impl AppState {
     pub fn load(paths: &AppPaths) -> anyhow::Result<Self> {
-        let raw = std::fs::read_to_string(&paths.state_path)?;
-        Ok(serde_json::from_str(&raw)?)
+        match std::fs::read_to_string(&paths.state_path) {
+            Ok(raw) => Ok(serde_json::from_str(&raw)?),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                let legacy_state_path = legacy_state_path(paths);
+                let raw = std::fs::read_to_string(&legacy_state_path)?;
+                std::fs::create_dir_all(&paths.state_dir)?;
+                std::fs::write(&paths.state_path, raw.as_bytes())?;
+                Ok(serde_json::from_str(&raw)?)
+            }
+            Err(error) => Err(error.into()),
+        }
     }
 
     pub fn save(&self, paths: &AppPaths) -> anyhow::Result<()> {
@@ -19,4 +29,12 @@ impl AppState {
         std::fs::write(&paths.state_path, serde_json::to_vec_pretty(self)?)?;
         Ok(())
     }
+}
+
+fn legacy_state_path(paths: &AppPaths) -> PathBuf {
+    paths
+        .home_dir
+        .join(".config")
+        .join("overlay")
+        .join("state.json")
 }

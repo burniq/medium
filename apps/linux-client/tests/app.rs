@@ -110,6 +110,37 @@ fn app_state_saves_under_state_directory() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn app_state_loads_legacy_overlay_state_and_migrates_it() -> anyhow::Result<()> {
+    let home = tempfile::tempdir()?;
+    let paths = AppPaths::for_linux_home(home.path());
+    let legacy_state_path = home
+        .path()
+        .join(".config")
+        .join("overlay")
+        .join("state.json");
+    let expected = AppState {
+        server_url: "https://legacy.example.test".to_string(),
+        device_name: "legacy-node".to_string(),
+        bootstrap_code: "LEGACY123".to_string(),
+    };
+
+    fs::create_dir_all(legacy_state_path.parent().unwrap())?;
+    fs::write(&legacy_state_path, serde_json::to_vec_pretty(&expected)?)?;
+
+    let loaded = AppState::load(&paths)?;
+
+    assert_eq!(loaded.server_url, expected.server_url);
+    assert_eq!(loaded.device_name, expected.device_name);
+    assert_eq!(loaded.bootstrap_code, expected.bootstrap_code);
+    assert!(paths.state_path.is_file());
+    assert_eq!(
+        fs::read_to_string(&paths.state_path)?,
+        fs::read_to_string(&legacy_state_path)?
+    );
+    Ok(())
+}
+
 fn write_config(contents: &str) -> anyhow::Result<std::path::PathBuf> {
     let path = std::env::temp_dir().join(format!(
         "overlay-linux-client-{}-{}.toml",
