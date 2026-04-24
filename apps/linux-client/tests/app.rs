@@ -47,7 +47,7 @@ fn run_supports_label_normalization() -> anyhow::Result<()> {
 fn run_requires_config_flag() {
     let error = run(vec!["medium".to_string(), "run".to_string()]).unwrap_err();
     assert!(
-        error.contains("usage: medium [pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
+        error.contains("usage: medium [join <invite> | pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
     );
 }
 
@@ -88,7 +88,7 @@ target = "127.0.0.1:22"
 fn run_rejects_unknown_commands() {
     let error = run(vec!["medium".to_string(), "bad".to_string()]).unwrap_err();
     assert!(
-        error.contains("usage: medium [pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
+        error.contains("usage: medium [join <invite> | pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]")
     );
 }
 
@@ -100,6 +100,7 @@ fn app_state_saves_under_state_directory() -> anyhow::Result<()> {
         server_url: "https://example.test".to_string(),
         device_name: "node-home".to_string(),
         bootstrap_code: "ABC123".to_string(),
+        invite_version: 0,
     };
 
     state.save(&paths)?;
@@ -123,6 +124,7 @@ fn app_state_loads_legacy_overlay_state_and_migrates_it() -> anyhow::Result<()> 
         server_url: "https://legacy.example.test".to_string(),
         device_name: "legacy-node".to_string(),
         bootstrap_code: "LEGACY123".to_string(),
+        invite_version: 0,
     };
 
     fs::create_dir_all(legacy_state_path.parent().unwrap())?;
@@ -133,6 +135,7 @@ fn app_state_loads_legacy_overlay_state_and_migrates_it() -> anyhow::Result<()> 
     assert_eq!(loaded.server_url, expected.server_url);
     assert_eq!(loaded.device_name, expected.device_name);
     assert_eq!(loaded.bootstrap_code, expected.bootstrap_code);
+    assert_eq!(loaded.invite_version, expected.invite_version);
     assert!(paths.state_path.is_file());
     assert_eq!(
         fs::read_to_string(&paths.state_path)?,

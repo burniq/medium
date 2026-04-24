@@ -3,6 +3,7 @@ use crate::client_api;
 use crate::paths::AppPaths;
 use crate::ssh::sync_ssh_config;
 use crate::state::AppState;
+use crate::state::invite;
 use home_node::agent::prepare_agent_from_path;
 use overlay_protocol::{DeviceRecord, SessionOpenGrant};
 use overlay_transport::session::{SessionHello, write_session_hello};
@@ -10,11 +11,14 @@ use std::path::PathBuf;
 use tokio::io::{self, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-const USAGE: &str = "usage: medium [pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]";
+const USAGE: &str = "usage: medium [join <invite> | pair --server <url> --device <name> | devices | ssh sync [--write-main-config] | proxy ssh --device <name> | run --config <path> | info | normalize-label <value>]";
 
 enum Command {
     Run {
         config_path: PathBuf,
+    },
+    Join {
+        invite: String,
     },
     Pair {
         server_url: String,
@@ -44,7 +48,8 @@ where
         }
         Command::Info => Ok(app::summary().to_string()),
         Command::NormalizeLabel { value } => Ok(app::normalize_device_label(&value)),
-        Command::Pair { .. }
+        Command::Join { .. }
+        | Command::Pair { .. }
         | Command::Devices
         | Command::SshSync { .. }
         | Command::ProxySsh { .. } => Err("command requires runtime context; use run_main".into()),
@@ -63,6 +68,18 @@ where
                 .await
                 .map_err(|error| error.to_string())?;
             Ok(None)
+        }
+        Command::Join { invite } => {
+            let paths = AppPaths::from_env().map_err(|error| error.to_string())?;
+            let invite = invite::parse_invite(&invite).map_err(|error| error.to_string())?;
+            let state = client_api::join(&invite)
+                .await
+                .map_err(|error| error.to_string())?;
+            state.save(&paths).map_err(|error| error.to_string())?;
+            Ok(Some(format!(
+                "joined {} via {} using invite v{}",
+                state.device_name, state.server_url, state.invite_version
+            )))
         }
         Command::Pair {
             server_url,
@@ -128,6 +145,9 @@ where
     let args: Vec<String> = args.into_iter().collect();
 
     match args.as_slice() {
+        [_binary, command, invite] if command == "join" => Ok(Command::Join {
+            invite: invite.clone(),
+        }),
         [_binary, command, flag, server_url, device_flag, device_name]
             if command == "pair" && flag == "--server" && device_flag == "--device" =>
         {

@@ -2,11 +2,17 @@ use crate::paths::AppPaths;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[path = "invite.rs"]
+pub mod invite;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppState {
     pub server_url: String,
+    #[serde(alias = "node_name")]
     pub device_name: String,
     pub bootstrap_code: String,
+    #[serde(default)]
+    pub invite_version: u32,
 }
 
 impl AppState {
