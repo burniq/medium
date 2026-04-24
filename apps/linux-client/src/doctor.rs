@@ -9,6 +9,10 @@ use std::process::Command;
 
 const CONTROL_SERVICE: &str = "medium-control-plane.service";
 const NODE_SERVICE: &str = "medium-home-node.service";
+const MAIN_INCLUDE_LINE: &str = "Include ~/.ssh/config.d/medium.conf";
+const LEGACY_MAIN_INCLUDE_LINE: &str = "Include ~/.ssh/config.d/overlay.conf";
+const LEGACY_MANAGED_HEADER: &str = "# Managed by overlay.";
+const LEGACY_PROXY_COMMAND: &str = "ProxyCommand overlay proxy ssh --device ";
 
 pub struct DoctorReport {
     pub lines: Vec<String>,
@@ -202,44 +206,60 @@ impl SshStatus {
 }
 
 fn inspect_ssh(paths: &AppPaths) -> anyhow::Result<SshInspection> {
+    let legacy_overlay_is_managed = legacy_overlay_config_is_managed(paths)?;
     let raw = match fs::read_to_string(&paths.ssh_config_path) {
         Ok(raw) => raw,
         Err(error) if error.kind() == ErrorKind::NotFound => {
             return Ok(SshInspection {
                 include_status: SshStatus::Missing,
-                managed_status: managed_ssh_status(paths),
+                managed_status: managed_ssh_status(paths, legacy_overlay_is_managed),
             });
         }
         Err(error) => return Err(error.into()),
     };
 
-    let include_status = raw
+    let has_medium_include = raw.lines().map(str::trim).any(|line| line == MAIN_INCLUDE_LINE);
+    let has_legacy_include = raw
         .lines()
         .map(str::trim)
-        .find_map(|line| match line {
-            "Include ~/.ssh/config.d/medium.conf" => Some(SshStatus::Ok),
-            "Include ~/.ssh/config.d/overlay.conf" => Some(SshStatus::Legacy("legacy overlay.conf")),
-            _ => None,
-        })
-        .unwrap_or(SshStatus::Missing);
+        .any(|line| line == LEGACY_MAIN_INCLUDE_LINE);
+
+    let include_status = if has_medium_include {
+        SshStatus::Ok
+    } else if has_legacy_include && legacy_overlay_is_managed {
+        SshStatus::Legacy("legacy overlay.conf")
+    } else {
+        SshStatus::Missing
+    };
 
     Ok(SshInspection {
         include_status,
-        managed_status: managed_ssh_status(paths),
+        managed_status: managed_ssh_status(paths, legacy_overlay_is_managed),
     })
 }
 
-fn managed_ssh_status(paths: &AppPaths) -> SshStatus {
+fn managed_ssh_status(paths: &AppPaths, legacy_overlay_is_managed: bool) -> SshStatus {
     if paths.overlay_ssh_config_path.exists() {
         return SshStatus::Ok;
     }
 
     let legacy_path = paths.ssh_config_dir.join("overlay.conf");
-    if legacy_path.exists() {
+    if legacy_overlay_is_managed && legacy_path.exists() {
         return SshStatus::Legacy("legacy overlay.conf");
     }
 
     SshStatus::Missing
+}
+
+fn legacy_overlay_config_is_managed(paths: &AppPaths) -> anyhow::Result<bool> {
+    let legacy_path = paths.ssh_config_dir.join("overlay.conf");
+    let raw = match fs::read_to_string(&legacy_path) {
+        Ok(raw) => raw,
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(error.into()),
+    };
+
+    Ok(raw.contains(LEGACY_MANAGED_HEADER) || raw.contains(LEGACY_PROXY_COMMAND))
 }
 
 fn service_line(service: &str) -> String {

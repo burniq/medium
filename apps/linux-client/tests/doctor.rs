@@ -234,7 +234,10 @@ async fn doctor_reads_legacy_state_and_ssh_without_migrating() -> anyhow::Result
         &paths.ssh_config_path,
         "Include ~/.ssh/config.d/overlay.conf\nHost existing\n  HostName example.test\n",
     )?;
-    fs::write(&legacy_managed_path, "Host overlay-legacy\n  HostName 198.51.100.44\n")?;
+    fs::write(
+        &legacy_managed_path,
+        "# Managed by overlay. DO NOT EDIT.\n\nHost node-home\n  ProxyCommand overlay proxy ssh --device node-home\n",
+    )?;
     fs::write(
         root_dir.join("etc/medium/control.toml"),
         "bind_addr = \"0.0.0.0:8080\"\ndatabase_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\n",
@@ -303,5 +306,91 @@ async fn doctor_reports_structurally_invalid_configs() -> anyhow::Result<()> {
     assert!(output.contains("control-config-valid: invalid"));
     assert!(output.contains("node-config: ok"));
     assert!(output.contains("node-config-valid: invalid"));
+    Ok(())
+}
+
+#[tokio::test]
+async fn doctor_does_not_treat_user_owned_overlay_conf_as_legacy_managed_state(
+) -> anyhow::Result<()> {
+    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+    let temp = tempfile::tempdir()?;
+    let home_dir = temp.path().join("home");
+    let root_dir = temp.path().join("root");
+    let systemctl_path = temp.path().join("mock-systemctl.sh");
+    let paths = AppPaths::from_home(&home_dir);
+    let user_overlay_path = paths.ssh_config_dir.join("overlay.conf");
+    fs::create_dir_all(&paths.app_config_dir)?;
+    fs::create_dir_all(&paths.state_dir)?;
+    fs::create_dir_all(&paths.ssh_config_dir)?;
+    fs::create_dir_all(root_dir.join("etc/medium"))?;
+    fs::create_dir_all(root_dir.join("var/lib/medium"))?;
+    write_mock_systemctl(&systemctl_path)?;
+
+    fs::write(
+        &paths.ssh_config_path,
+        "Include ~/.ssh/config.d/overlay.conf\nHost existing\n  HostName example.test\n",
+    )?;
+    fs::write(
+        &user_overlay_path,
+        "Host corp-bastion\n  HostName bastion.example.com\n  User alice\n",
+    )?;
+
+    let _home = EnvGuard::set_path("OVERLAY_HOME", &home_dir);
+    let _root = EnvGuard::set_path("MEDIUM_ROOT", &root_dir);
+    let _systemctl_bin = EnvGuard::set_path("MEDIUM_SYSTEMCTL_BIN", &systemctl_path);
+
+    let output = run_main(vec!["medium".to_string(), "doctor".to_string()])
+        .await
+        .map_err(anyhow::Error::msg)?
+        .expect("doctor should return a report");
+
+    assert!(output.contains("ssh-include: missing"));
+    assert!(output.contains("ssh-managed-config: missing"));
+    assert!(!output.contains("legacy overlay.conf"));
+    Ok(())
+}
+
+#[tokio::test]
+async fn doctor_prefers_current_medium_ssh_state_over_legacy_overlay_state() -> anyhow::Result<()> {
+    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+    let temp = tempfile::tempdir()?;
+    let home_dir = temp.path().join("home");
+    let root_dir = temp.path().join("root");
+    let systemctl_path = temp.path().join("mock-systemctl.sh");
+    let paths = AppPaths::from_home(&home_dir);
+    let legacy_overlay_path = paths.ssh_config_dir.join("overlay.conf");
+    fs::create_dir_all(&paths.app_config_dir)?;
+    fs::create_dir_all(&paths.state_dir)?;
+    fs::create_dir_all(&paths.ssh_config_dir)?;
+    fs::create_dir_all(root_dir.join("etc/medium"))?;
+    fs::create_dir_all(root_dir.join("var/lib/medium"))?;
+    write_mock_systemctl(&systemctl_path)?;
+
+    fs::write(
+        &paths.ssh_config_path,
+        "Include ~/.ssh/config.d/overlay.conf\nInclude ~/.ssh/config.d/medium.conf\n",
+    )?;
+    fs::write(
+        &legacy_overlay_path,
+        "# Managed by overlay. DO NOT EDIT.\n\nHost node-home\n  ProxyCommand overlay proxy ssh --device node-home\n",
+    )?;
+    fs::write(
+        &paths.overlay_ssh_config_path,
+        "# Managed by medium. DO NOT EDIT.\n\nHost node-home\n  ProxyCommand medium proxy ssh --device node-home\n",
+    )?;
+
+    let _home = EnvGuard::set_path("OVERLAY_HOME", &home_dir);
+    let _root = EnvGuard::set_path("MEDIUM_ROOT", &root_dir);
+    let _systemctl_bin = EnvGuard::set_path("MEDIUM_SYSTEMCTL_BIN", &systemctl_path);
+
+    let output = run_main(vec!["medium".to_string(), "doctor".to_string()])
+        .await
+        .map_err(anyhow::Error::msg)?
+        .expect("doctor should return a report");
+
+    assert!(output.contains("ssh-include: ok"));
+    assert!(output.contains("ssh-managed-config: ok"));
+    assert!(!output.contains("ssh-include: ok (legacy overlay.conf)"));
+    assert!(!output.contains("ssh-managed-config: ok (legacy overlay.conf)"));
     Ok(())
 }
