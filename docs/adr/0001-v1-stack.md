@@ -4,5 +4,5 @@
 - UniFFI for Rust bindings into Swift and Kotlin
 - SwiftUI for iOS and macOS
 - Kotlin + Jetpack Compose for Android
-- GTK4/libadwaita for Linux
+- Headless Rust CLI/agent for Linux server deployments in v1
 - PostgreSQL for durable control-plane state

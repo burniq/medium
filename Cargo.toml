@@ -21,8 +21,6 @@ version = "0.1.0"
 anyhow = "1"
 axum = { version = "0.8", features = ["macros", "ws"] }
 chrono = { version = "0.4", features = ["serde"] }
-gtk4 = "0.10"
-libadwaita = "0.8"
 quinn = "0.11"
 rcgen = "0.14"
 rustls = "0.23"

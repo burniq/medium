@@ -1,6 +1,13 @@
 [package]
 name = "linux-client"
-version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
 
 [dependencies]
+client-core = { path = "../../crates/client-core" }
+home-node = { path = "../../services/home-node" }
+tokio.workspace = true
+
+[dev-dependencies]
+anyhow.workspace = true
