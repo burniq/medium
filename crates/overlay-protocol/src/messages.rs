@@ -28,6 +28,7 @@ pub struct SessionOpenGrant {
     pub service_id: String,
     pub home_node_id: String,
     pub relay_hint: Option<String>,
+    pub authorization: SessionAuthorization,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,4 +42,16 @@ pub struct PublishedService {
 pub struct RegisterNodeRequest {
     pub node_id: String,
     pub services: Vec<PublishedService>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PeerCandidate {
+    pub addr: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionAuthorization {
+    pub token: String,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
+    pub candidates: Vec<PeerCandidate>,
 }
