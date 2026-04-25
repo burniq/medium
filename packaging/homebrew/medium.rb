@@ -1,7 +1,7 @@
 class Medium < Formula
   desc "Personal service-access overlay CLI"
-  homepage "https://example.invalid/medium"
-  url "https://example.invalid/medium-0.1.0.tar.gz"
+  homepage "https://github.com/k1t-ops/medium"
+  url "https://github.com/k1t-ops/medium/releases/download/v0.1.0/medium-0.1.0.tar.gz"
   sha256 "REPLACE_WITH_ARCHIVE_SHA256"
   license "MIT"
   version "0.1.0"
