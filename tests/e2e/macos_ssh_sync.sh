@@ -17,6 +17,7 @@ target_addr="127.0.0.1:2222"
 shared_secret="local-secret"
 home_config="$workdir/home-node.toml"
 db_url="sqlite://$workdir/control-plane.db"
+target_pid=""
 
 cat >"$home_config" <<EOF
 node_id = "node-home"
@@ -42,6 +43,10 @@ cargo run -p home-node -- --config "$home_config" >"$home_log" 2>&1 &
 home_pid=$!
 
 cleanup() {
+  if [ -n "$target_pid" ]; then
+    kill "$target_pid" 2>/dev/null || true
+    wait "$target_pid" 2>/dev/null || true
+  fi
   kill "$control_pid" 2>/dev/null || true
   wait "$control_pid" 2>/dev/null || true
   kill "$home_pid" 2>/dev/null || true
@@ -116,6 +121,7 @@ target_pid=$!
 printf '' | OVERLAY_HOME="$home_dir" cargo run -p linux-client --bin medium -- \
   proxy ssh --device node-home >"$banner_log"
 wait "$target_pid"
+target_pid=""
 grep -q "SSH-2.0-OverlayTest" "$banner_log"
 
 OVERLAY_HOME="$home_dir" cargo run -p linux-client --bin medium -- ssh sync >/dev/null
