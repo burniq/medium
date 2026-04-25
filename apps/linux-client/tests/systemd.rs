@@ -119,8 +119,24 @@ async fn init_control_renders_units_and_enables_services() -> anyhow::Result<()>
     let shared_secret = shared_secret_line
         .trim_start_matches("shared_secret = \"")
         .trim_end_matches('"');
+    let control_pin_line = control_config
+        .lines()
+        .find(|line| line.starts_with("control_pin = "))
+        .expect("control_pin should be present in control config");
+    let control_pin = control_pin_line
+        .trim_start_matches("control_pin = \"")
+        .trim_end_matches('"');
     assert!(control_unit.contains(&format!(
         "Environment=OVERLAY_SHARED_SECRET={shared_secret}"
+    )));
+    assert!(control_unit.contains(&format!("Environment=MEDIUM_CONTROL_PIN={control_pin}")));
+    assert!(control_unit.contains(&format!(
+        "Environment=MEDIUM_CONTROL_TLS_CERT_PATH={}",
+        temp.path().join("etc/medium/control.crt").display()
+    )));
+    assert!(control_unit.contains(&format!(
+        "Environment=MEDIUM_CONTROL_TLS_KEY_PATH={}",
+        temp.path().join("etc/medium/control.key").display()
     )));
     assert!(control_unit.contains(&format!(
         "WorkingDirectory={}",
@@ -139,6 +155,7 @@ async fn init_control_renders_units_and_enables_services() -> anyhow::Result<()>
     assert!(node_unit.contains(&format!(
         "Environment=OVERLAY_SHARED_SECRET={shared_secret}"
     )));
+    assert!(node_unit.contains(&format!("Environment=MEDIUM_CONTROL_PIN={control_pin}")));
     assert!(!node_unit.contains("medium serve"));
     assert!(!node_unit.contains("http://127.0.0.1:8080"));
 

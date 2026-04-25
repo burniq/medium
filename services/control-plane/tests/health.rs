@@ -8,6 +8,7 @@ async fn health_route_returns_ok() {
             .await
             .unwrap(),
         shared_secret: "local-test-secret".into(),
+        control_pin: String::new(),
     });
     let response = app
         .oneshot(

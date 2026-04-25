@@ -41,12 +41,12 @@ curl -fsSL https://raw.githubusercontent.com/k1t-ops/medium/main/scripts/install
 Run this on the Linux host that will act as your first Medium server:
 
 ```sh
-sudo MEDIUM_CONTROL_PUBLIC_URL="http://192.168.1.10:8080" \
+sudo MEDIUM_CONTROL_PUBLIC_URL="https://192.168.1.10:8080" \
   MEDIUM_NODE_PUBLIC_ADDR="192.168.1.10:17001" \
   medium init-control
 ```
 
-`medium init-control` creates the server config under `/etc/medium`, state under `/var/lib/medium`, renders systemd units, and prints a `medium://join?...` invite.
+`medium init-control` creates the server config under `/etc/medium`, generates a pinned self-signed control-plane TLS identity, creates state under `/var/lib/medium`, renders systemd units, and prints a `medium://join?...` invite.
 
 After bootstrap, check status:
 
@@ -59,7 +59,7 @@ medium doctor
 Run this on a client machine:
 
 ```sh
-medium join 'medium://join?v=1&control=http://192.168.1.10:8080&security=pinned-tls&control_pin=sha256:...'
+medium join 'medium://join?v=1&control=https://192.168.1.10:8080&security=pinned-tls&control_pin=sha256:...'
 medium devices
 medium ssh sync
 ssh node-1

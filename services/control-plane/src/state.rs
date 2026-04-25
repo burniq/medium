@@ -4,6 +4,7 @@ use crate::registry::RegistryStore;
 pub struct ControlState {
     pub registry: RegistryStore,
     pub shared_secret: String,
+    pub control_pin: String,
 }
 
 impl ControlState {
@@ -14,6 +15,7 @@ impl ControlState {
             registry: RegistryStore::connect(&database_url).await?,
             shared_secret: std::env::var("OVERLAY_SHARED_SECRET")
                 .unwrap_or_else(|_| "local-dev-secret".into()),
+            control_pin: std::env::var("MEDIUM_CONTROL_PIN").unwrap_or_default(),
         })
     }
 }

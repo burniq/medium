@@ -2,7 +2,7 @@ use chrono::{DateTime, Duration, Utc};
 use hmac::{Hmac, Mac};
 use rcgen::{CertificateParams, DistinguishedName, DnType, KeyPair};
 use serde::{Deserialize, Serialize};
-use sha2::Sha256;
+use sha2::{Digest, Sha256};
 
 pub fn issue_bootstrap_code() -> String {
     format!("ovr-{}", uuid::Uuid::new_v4().simple())
@@ -20,6 +20,31 @@ pub fn issue_node_cert(
     let cert = params.self_signed(&KeyPair::generate()?)?;
     let expires_at = Utc::now() + Duration::hours(24);
     Ok((cert.pem(), expires_at))
+}
+
+#[derive(Debug, Clone)]
+pub struct ControlTlsIdentity {
+    pub cert_pem: String,
+    pub key_pem: String,
+    pub control_pin: String,
+}
+
+pub fn issue_control_tls_identity(
+    subject_alt_names: &[String],
+) -> anyhow::Result<ControlTlsIdentity> {
+    let key_pair = KeyPair::generate()?;
+    let mut params = CertificateParams::new(subject_alt_names.to_vec())?;
+    let mut dn = DistinguishedName::new();
+    dn.push(DnType::CommonName, "medium-control");
+    params.distinguished_name = dn;
+    let cert = params.self_signed(&key_pair)?;
+    let digest = Sha256::digest(cert.der().as_ref());
+
+    Ok(ControlTlsIdentity {
+        cert_pem: cert.pem(),
+        key_pem: key_pair.serialize_pem(),
+        control_pin: format!("sha256:{}", hex_lower(&digest)),
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,4 +112,8 @@ fn sign_payload(shared_secret: &str, payload: &[u8]) -> anyhow::Result<Vec<u8>> 
         .map_err(|error| anyhow::anyhow!("invalid HMAC key: {error}"))?;
     mac.update(payload);
     Ok(mac.finalize().into_bytes().to_vec())
+}
+
+fn hex_lower(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }

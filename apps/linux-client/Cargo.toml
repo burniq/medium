@@ -12,6 +12,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 client-core = { path = "../../crates/client-core" }
 home-node = { path = "../../services/home-node" }
+overlay-crypto = { path = "../../crates/overlay-crypto" }
 overlay-protocol = { path = "../../crates/overlay-protocol" }
 overlay-transport = { path = "../../crates/overlay-transport" }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
@@ -20,4 +21,8 @@ serde_json.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+rcgen.workspace = true
+rustls.workspace = true
+sha2.workspace = true
 tempfile = "3"
+tokio-rustls.workspace = true

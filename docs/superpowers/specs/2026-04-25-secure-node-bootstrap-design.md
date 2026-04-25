@@ -23,7 +23,7 @@ Plain HTTP is treated as an untrusted byte pipe. Medium must not send bearer sec
 The trust anchor is pinned from the invite:
 
 ```text
-medium://join?v=1&control=http://192.168.1.10:8080&security=pinned-tls&control_pin=<fingerprint>
+medium://join?v=1&control=https://192.168.1.10:8080&security=pinned-tls&control_pin=<fingerprint>
 ```
 
 The invite may use an IP address or a DNS name. `security=pinned-tls` and `control_pin` are mandatory for the Xray-style connection profile.

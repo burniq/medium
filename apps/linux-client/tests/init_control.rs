@@ -63,10 +63,14 @@ async fn init_control_creates_expected_paths_and_files() -> anyhow::Result<()> {
         .expect("init-control should return a summary");
 
     let control_config_path = temp.path().join("etc/medium/control.toml");
+    let control_cert_path = temp.path().join("etc/medium/control.crt");
+    let control_key_path = temp.path().join("etc/medium/control.key");
     let node_config_path = temp.path().join("etc/medium/node.toml");
     let database_path = temp.path().join("var/lib/medium/control-plane.db");
 
     assert!(control_config_path.is_file());
+    assert!(control_cert_path.is_file());
+    assert!(control_key_path.is_file());
     assert!(node_config_path.is_file());
     assert!(database_path.is_file());
 
@@ -75,7 +79,15 @@ async fn init_control_creates_expected_paths_and_files() -> anyhow::Result<()> {
     assert!(control_config.contains("control_url = \"https://control.example.test\""));
     assert!(control_config.contains("database_url = \"sqlite://"));
     assert!(control_config.contains("shared_secret = \""));
-    assert!(control_config.contains("control_pin = \""));
+    assert!(control_config.contains("control_pin = \"sha256:"));
+    assert!(control_config.contains(&format!(
+        "tls_cert_path = \"{}\"",
+        control_cert_path.display()
+    )));
+    assert!(control_config.contains(&format!(
+        "tls_key_path = \"{}\"",
+        control_key_path.display()
+    )));
     assert!(control_config.contains(&format!(
         "database_url = \"sqlite://{}\"",
         database_path.display()
@@ -127,7 +139,7 @@ async fn init_control_allows_domainless_control_url_from_concrete_bind_addr() ->
         .expect("init-control should return a summary");
 
     assert!(output.contains(
-        "medium://join?v=1&control=http://198.51.100.24:8080&security=pinned-tls&control_pin="
+        "medium://join?v=1&control=https://198.51.100.24:8080&security=pinned-tls&control_pin="
     ));
     assert!(!output.contains("&token="));
     Ok(())

@@ -7,6 +7,7 @@ Wants=network-online.target
 Type=simple
 Environment=OVERLAY_CONTROL_URL={{CONTROL_URL}}
 Environment=OVERLAY_SHARED_SECRET={{SHARED_SECRET}}
+Environment=MEDIUM_CONTROL_PIN={{CONTROL_PIN}}
 ExecStart={{NODE_AGENT_BIN}} --config {{NODE_CONFIG_PATH}}
 Restart=on-failure
 RestartSec=5

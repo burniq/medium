@@ -59,7 +59,7 @@ Expected: PASS.
 
 Add tests for:
 
-- `MEDIUM_CONTROL_BIND_ADDR=198.51.100.24:8080` without `MEDIUM_CONTROL_PUBLIC_URL` succeeds and emits `http://198.51.100.24:8080`.
+- `MEDIUM_CONTROL_BIND_ADDR=198.51.100.24:8080` without `MEDIUM_CONTROL_PUBLIC_URL` succeeds and emits `https://198.51.100.24:8080`.
 - `MEDIUM_CONTROL_BIND_ADDR=0.0.0.0:8080` without public URL fails.
 - generated invite contains `control_pin=`.
 

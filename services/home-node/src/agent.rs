@@ -56,8 +56,19 @@ pub fn prepare_agent_from_path(path: impl AsRef<Path>) -> anyhow::Result<Prepare
 
 pub async fn register_node(
     control_url: &str,
+    control_pin: Option<&str>,
     registration: &RegisterNodeRequest,
 ) -> anyhow::Result<()> {
+    if let Some(control_pin) = control_pin {
+        overlay_transport::pinned_http::post_json_no_content(
+            &format!("{}/api/nodes/register", control_url.trim_end_matches('/')),
+            control_pin,
+            registration,
+        )
+        .await?;
+        return Ok(());
+    }
+
     reqwest::Client::new()
         .post(format!(
             "{}/api/nodes/register",
@@ -72,12 +83,13 @@ pub async fn register_node(
 
 pub async fn register_node_with_retry(
     control_url: &str,
+    control_pin: Option<&str>,
     registration: &RegisterNodeRequest,
 ) -> anyhow::Result<()> {
     let mut last_error = None;
 
     for _ in 0..30 {
-        match register_node(control_url, registration).await {
+        match register_node(control_url, control_pin, registration).await {
             Ok(()) => return Ok(()),
             Err(error) => {
                 last_error = Some(error);

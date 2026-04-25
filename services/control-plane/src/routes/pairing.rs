@@ -1,20 +1,33 @@
 use axum::{
     Json,
+    extract::State,
     http::{HeaderMap, header, uri::Authority},
 };
 use overlay_protocol::BootstrapInviteResponse;
 use std::str::FromStr;
 
+use crate::state::ControlState;
+
 const DEFAULT_CONTROL_AUTHORITY: &str = "127.0.0.1:8080";
 
-pub async fn create_bootstrap_code(headers: HeaderMap) -> Json<BootstrapInviteResponse> {
+pub async fn create_bootstrap_code(
+    State(state): State<ControlState>,
+    headers: HeaderMap,
+) -> Json<BootstrapInviteResponse> {
     let control_url = control_url(&headers);
-    Json(issue_bootstrap_invite(&control_url))
+    Json(issue_bootstrap_invite(&control_url, &state.control_pin))
 }
 
-fn issue_bootstrap_invite(control_url: &str) -> BootstrapInviteResponse {
+fn issue_bootstrap_invite(
+    control_url: &str,
+    configured_control_pin: &str,
+) -> BootstrapInviteResponse {
     let bootstrap_token = overlay_crypto::issue_bootstrap_code();
-    let control_pin = overlay_crypto::issue_bootstrap_code().replacen("ovr-", "sha256:", 1);
+    let control_pin = if configured_control_pin.is_empty() {
+        overlay_crypto::issue_bootstrap_code().replacen("ovr-", "sha256:", 1)
+    } else {
+        configured_control_pin.to_string()
+    };
     let invite = format!(
         "medium://join?v=1&control={control_url}&security=pinned-tls&control_pin={control_pin}"
     );

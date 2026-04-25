@@ -72,13 +72,13 @@ toml_value() {
 wait_http() {
   local url="$1"
   for _ in $(seq 1 30); do
-    if curl --fail --silent "$url" >/dev/null; then
+    if curl --fail --silent --insecure "$url" >/dev/null; then
       return 0
     fi
     sleep 1
   done
 
-  curl --fail --silent "$url" >/dev/null
+  curl --fail --silent --insecure "$url" >/dev/null
 }
 
 wait_tcp() {
@@ -97,7 +97,7 @@ wait_tcp() {
 init_log="$workdir/init-control.log"
 MEDIUM_ROOT="$server_root" \
 MEDIUM_CONTROL_BIND_ADDR="$control_addr" \
-MEDIUM_CONTROL_PUBLIC_URL="http://$control_addr" \
+MEDIUM_CONTROL_PUBLIC_URL="https://$control_addr" \
 MEDIUM_NODE_LISTEN_ADDR="$home_addr" \
 MEDIUM_NODE_PUBLIC_ADDR="$home_addr" \
 cargo run -p linux-client --bin medium -- init-control >"$init_log"
@@ -107,8 +107,14 @@ test -n "$invite"
 
 shared_secret="$(toml_value "shared_secret" "$control_config")"
 database_url="$(toml_value "database_url" "$control_config")"
+control_pin="$(toml_value "control_pin" "$control_config")"
+tls_cert_path="$(toml_value "tls_cert_path" "$control_config")"
+tls_key_path="$(toml_value "tls_key_path" "$control_config")"
 test -n "$shared_secret"
 test -n "$database_url"
+test -n "$control_pin"
+test -n "$tls_cert_path"
+test -n "$tls_key_path"
 
 # The production bootstrap owns the node config. The e2e redirects only the
 # service target so it can prove the SSH path without touching the host SSHD.
@@ -117,12 +123,16 @@ sed -i.bak "s#^target = \".*\"#target = \"$target_addr\"#" "$node_config"
 OVERLAY_CONTROL_BIND_ADDR="$control_addr" \
 OVERLAY_CONTROL_DATABASE_URL="$database_url" \
 OVERLAY_SHARED_SECRET="$shared_secret" \
+MEDIUM_CONTROL_PIN="$control_pin" \
+MEDIUM_CONTROL_TLS_CERT_PATH="$tls_cert_path" \
+MEDIUM_CONTROL_TLS_KEY_PATH="$tls_key_path" \
 cargo run -p control-plane >"$control_log" 2>&1 &
 control_pid=$!
-wait_http "http://$control_addr/health"
+wait_http "https://$control_addr/health"
 
-OVERLAY_CONTROL_URL="http://$control_addr" \
+OVERLAY_CONTROL_URL="https://$control_addr" \
 OVERLAY_SHARED_SECRET="$shared_secret" \
+MEDIUM_CONTROL_PIN="$control_pin" \
 cargo run -p home-node -- --config "$node_config" >"$home_log" 2>&1 &
 home_pid=$!
 wait_tcp 127.0.0.1 "$home_port"
@@ -130,7 +140,7 @@ wait_tcp 127.0.0.1 "$home_port"
 OVERLAY_HOME="$client_home" MEDIUM_DEVICE_NAME="macbook" \
 cargo run -p linux-client --bin medium -- join "$invite" >"$workdir/join.log"
 
-grep -q "joined macbook via http://$control_addr using invite v1" "$workdir/join.log"
+grep -q "joined macbook via https://$control_addr using invite v1" "$workdir/join.log"
 
 OVERLAY_HOME="$client_home" cargo run -p linux-client --bin medium -- devices >"$devices_log"
 grep -q "node-1 ssh overlay@$home_addr" "$devices_log"

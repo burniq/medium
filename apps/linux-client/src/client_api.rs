@@ -3,6 +3,7 @@ use crate::state::AppState;
 use crate::state::invite::Invite;
 use anyhow::{Context, bail};
 use overlay_protocol::{DeviceCatalogResponse, SessionOpenGrant, SessionOpenRequest};
+use overlay_transport::pinned_http;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -55,6 +56,10 @@ pub async fn join(invite: &Invite) -> anyhow::Result<AppState> {
 
 pub async fn fetch_devices(state: &AppState) -> anyhow::Result<DeviceCatalogResponse> {
     let url = format!("{}/api/devices", state.server_url.trim_end_matches('/'));
+    if state.security == "pinned-tls" {
+        return pinned_http::get_json(&url, &state.control_pin).await;
+    }
+
     let response = reqwest::get(url).await?.error_for_status()?;
     Ok(response.json().await?)
 }
@@ -87,6 +92,15 @@ pub async fn open_session(state: &AppState, service_id: &str) -> anyhow::Result<
         "{}/api/sessions/open",
         state.server_url.trim_end_matches('/')
     );
+    if state.security == "pinned-tls" {
+        let url = format!(
+            "{url}?service_id={}&requester_device_id={}",
+            percent_encode(service_id),
+            percent_encode(&state.device_name)
+        );
+        return pinned_http::get_json(&url, &state.control_pin).await;
+    }
+
     let response = reqwest::Client::new()
         .get(url)
         .query(&SessionOpenRequest {
@@ -108,4 +122,17 @@ pub fn format_join_invite(control_url: &str, control_pin: &str) -> anyhow::Resul
     Ok(format!(
         "medium://join?v=1&control={control_url}&security=pinned-tls&control_pin={control_pin}"
     ))
+}
+
+fn percent_encode(value: &str) -> String {
+    let mut encoded = String::new();
+    for byte in value.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                encoded.push(byte as char);
+            }
+            _ => encoded.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    encoded
 }

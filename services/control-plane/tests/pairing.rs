@@ -26,6 +26,8 @@ async fn bootstrap_route_returns_medium_join_invite() {
             .await
             .unwrap(),
         shared_secret: "local-test-secret".into(),
+        control_pin: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            .into(),
     });
     let response = app
         .oneshot(
@@ -48,7 +50,10 @@ async fn bootstrap_route_returns_medium_join_invite() {
     assert_eq!(payload.expires_at, None);
     assert!(payload.bootstrap_token.starts_with("ovr-"));
     assert_eq!(payload.security, "pinned-tls");
-    assert!(payload.control_pin.starts_with("sha256:"));
+    assert_eq!(
+        payload.control_pin,
+        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    );
     assert_eq!(legacy_payload.code, payload.bootstrap_token);
     assert_eq!(
         payload.invite,
@@ -67,6 +72,8 @@ async fn bootstrap_route_ignores_invalid_forwarded_headers() {
             .await
             .unwrap(),
         shared_secret: "local-test-secret".into(),
+        control_pin: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            .into(),
     });
     let response = app
         .oneshot(
