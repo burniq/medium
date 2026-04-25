@@ -1,7 +1,0 @@
-services:
-  postgres:
-    image: postgres:17
-    environment:
-      POSTGRES_DB: overlay
-      POSTGRES_USER: overlay
-      POSTGRES_PASSWORD: overlay
