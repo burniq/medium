@@ -1,4 +1,7 @@
-use axum::{Router, routing::{get, post}};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 
 use crate::routes::{
     devices::list_devices, health::health, nodes::register_node, pairing::create_bootstrap_code,

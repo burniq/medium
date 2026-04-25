@@ -20,12 +20,12 @@ db_url="sqlite://$workdir/control-plane.db"
 target_pid=""
 
 cat >"$home_config" <<EOF
-node_id = "node-home"
-node_label = "node-home"
+node_id = "node-1"
+node_label = "node-1"
 bind_addr = "$home_addr"
 
 [[services]]
-id = "svc_home_ssh"
+id = "svc_ssh"
 kind = "ssh"
 user_name = "overlay"
 target = "$target_addr"
@@ -79,7 +79,7 @@ grep -q "paired macbook with http://$control_addr" "$pair_log"
 
 OVERLAY_HOME="$home_dir" cargo run -p linux-client --bin medium -- \
   devices >"$devices_log"
-grep -q "node-home ssh overlay@127.0.0.1:17001" "$devices_log"
+grep -q "node-1 ssh overlay@127.0.0.1:17001" "$devices_log"
 
 mkdir -p "$home_dir/.ssh/config.d"
 cat >"$home_dir/.ssh/config" <<EOF
@@ -88,10 +88,10 @@ EOF
 cat >"$home_dir/.ssh/config.d/overlay.conf" <<EOF
 # Managed by overlay. DO NOT EDIT.
 
-Host node-home
-  HostName node-home
+Host node-1
+  HostName node-1
   User overlay
-  ProxyCommand overlay proxy ssh --device node-home
+  ProxyCommand overlay proxy ssh --device node-1
 EOF
 
 if OVERLAY_HOME="$home_dir" cargo run -p linux-client --bin medium -- ssh sync \
@@ -109,9 +109,9 @@ if grep -q "Include ~/.ssh/config.d/overlay.conf" "$home_dir/.ssh/config"; then
   echo "legacy overlay include survived migration" >&2
   exit 1
 fi
-grep -q "Host node-home" "$home_dir/.ssh/config.d/medium.conf"
-grep -q "ProxyCommand medium proxy ssh --device node-home" "$home_dir/.ssh/config.d/medium.conf"
-if grep -q "ProxyCommand overlay proxy ssh --device node-home" "$home_dir/.ssh/config.d/overlay.conf"; then
+grep -q "Host node-1" "$home_dir/.ssh/config.d/medium.conf"
+grep -q "ProxyCommand medium proxy ssh --device node-1" "$home_dir/.ssh/config.d/medium.conf"
+if grep -q "ProxyCommand overlay proxy ssh --device node-1" "$home_dir/.ssh/config.d/overlay.conf"; then
   echo "legacy overlay proxy command remained active" >&2
   exit 1
 fi
@@ -119,7 +119,7 @@ fi
 python3 -c 'import socket; s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(("127.0.0.1", 2222)); s.listen(1); conn, _ = s.accept(); conn.sendall(b"SSH-2.0-OverlayTest\r\n"); conn.close(); s.close()' &
 target_pid=$!
 printf '' | OVERLAY_HOME="$home_dir" cargo run -p linux-client --bin medium -- \
-  proxy ssh --device node-home >"$banner_log"
+  proxy ssh --device node-1 >"$banner_log"
 wait "$target_pid"
 target_pid=""
 grep -q "SSH-2.0-OverlayTest" "$banner_log"

@@ -8,6 +8,8 @@ pub struct NodeConfig {
     pub node_label: Option<String>,
     #[serde(default = "default_bind_addr")]
     pub bind_addr: String,
+    #[serde(default)]
+    pub public_addr: Option<String>,
     pub services: Vec<ServiceConfig>,
 }
 

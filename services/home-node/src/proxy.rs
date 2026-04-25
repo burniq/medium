@@ -61,8 +61,8 @@ async fn handle_connection(
     if claims.service_id != hello.service_id {
         anyhow::bail!("session service mismatch");
     }
-    if claims.home_node_id != expected_node_id {
-        anyhow::bail!("session home node mismatch");
+    if claims.node_id != expected_node_id {
+        anyhow::bail!("session node mismatch");
     }
 
     let target = services

@@ -18,11 +18,11 @@ async fn proxy_forwards_tcp_stream_to_matching_service() {
 
     let cfg: NodeConfig = toml::from_str(&format!(
         r#"
-node_id = "node-home"
+node_id = "node-1"
 bind_addr = "127.0.0.1:0"
 
 [[services]]
-id = "svc_home_ssh"
+id = "svc_ssh"
 kind = "ssh"
 target = "{target_addr}"
 "#
@@ -41,8 +41,8 @@ target = "{target_addr}"
     let bound_addr = bound_addr_rx.await.unwrap();
     let mut client = TcpStream::connect(bound_addr).await.unwrap();
     let hello = SessionHello {
-        token: issue_session_token("local-secret", "sess-1", "svc_home_ssh", "node-home").unwrap(),
-        service_id: "svc_home_ssh".into(),
+        token: issue_session_token("local-secret", "sess-1", "svc_ssh", "node-1").unwrap(),
+        service_id: "svc_ssh".into(),
     };
     write_session_hello(&mut client, &hello).await.unwrap();
 

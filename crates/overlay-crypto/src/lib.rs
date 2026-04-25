@@ -26,7 +26,7 @@ pub fn issue_node_cert(
 pub struct SessionTokenClaims {
     pub session_id: String,
     pub service_id: String,
-    pub home_node_id: String,
+    pub node_id: String,
     pub expires_at: DateTime<Utc>,
 }
 
@@ -34,24 +34,20 @@ pub fn issue_session_token(
     shared_secret: &str,
     session_id: &str,
     service_id: &str,
-    home_node_id: &str,
+    node_id: &str,
 ) -> anyhow::Result<String> {
     let claims = SessionTokenClaims {
         session_id: session_id.to_string(),
         service_id: service_id.to_string(),
-        home_node_id: home_node_id.to_string(),
+        node_id: node_id.to_string(),
         expires_at: Utc::now() + Duration::minutes(2),
     };
     let payload = serde_json::to_vec(&claims)?;
     let signature = sign_payload(shared_secret, &payload)?;
-    let payload_b64 = base64::Engine::encode(
-        &base64::engine::general_purpose::URL_SAFE_NO_PAD,
-        payload,
-    );
-    let signature_b64 = base64::Engine::encode(
-        &base64::engine::general_purpose::URL_SAFE_NO_PAD,
-        signature,
-    );
+    let payload_b64 =
+        base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, payload);
+    let signature_b64 =
+        base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, signature);
     Ok(format!("{payload_b64}.{signature_b64}"))
 }
 

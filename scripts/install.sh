@@ -52,9 +52,10 @@ fi
 
 echo "medium installer: installing into $prefix/bin"
 $sudo_cmd mkdir -p "$prefix/bin"
-for bin in medium control-plane home-node; do
+for bin in medium control-plane; do
   $sudo_cmd install -m 0755 "$src_dir/target/release/$bin" "$prefix/bin/$bin"
 done
+$sudo_cmd install -m 0755 "$src_dir/target/release/home-node" "$prefix/bin/node-agent"
 
 echo "medium installer: installed medium"
-echo "next server step: sudo MEDIUM_CONTROL_PUBLIC_URL=https://control.example.com MEDIUM_HOME_NODE_BIND_ADDR=home.example.com:17001 medium init-control"
+echo "next server step: sudo MEDIUM_CONTROL_PUBLIC_URL=http://192.0.2.10:8080 MEDIUM_NODE_PUBLIC_ADDR=192.0.2.10:17001 medium init-control"

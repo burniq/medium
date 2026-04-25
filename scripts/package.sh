@@ -25,12 +25,12 @@ mkdir -p \
 
 install -m 0755 target/release/medium "$out_dir/bin/medium"
 install -m 0755 target/release/control-plane "$out_dir/bin/control-plane"
-install -m 0755 target/release/home-node "$out_dir/bin/home-node"
+install -m 0755 target/release/home-node "$out_dir/bin/node-agent"
 
 install -m 0644 packaging/systemd/medium-control-plane.service \
   "$out_dir/systemd/medium-control-plane.service"
-install -m 0644 packaging/systemd/medium-home-node.service \
-  "$out_dir/systemd/medium-home-node.service"
+install -m 0644 packaging/systemd/medium-node-agent.service \
+  "$out_dir/systemd/medium-node-agent.service"
 
 install -m 0644 packaging/linux/README.md "$out_dir/docs/linux/README.md"
 install -m 0644 packaging/linux/install-layout.txt \

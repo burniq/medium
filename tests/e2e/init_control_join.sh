@@ -7,9 +7,26 @@ client_home="$workdir/client-home"
 bin_dir="$workdir/bin"
 mkdir -p "$server_root" "$client_home" "$bin_dir"
 
-control_addr="127.0.0.1:18081"
-home_addr="127.0.0.1:17002"
-target_addr="127.0.0.1:2223"
+read -r control_port home_port target_port <<EOF
+$(python3 - <<'PY'
+import socket
+
+ports = []
+sockets = []
+for _ in range(3):
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    ports.append(sock.getsockname()[1])
+    sockets.append(sock)
+print(*ports)
+for sock in sockets:
+    sock.close()
+PY
+)
+EOF
+control_addr="127.0.0.1:$control_port"
+home_addr="127.0.0.1:$home_port"
+target_addr="127.0.0.1:$target_port"
 control_config="$server_root/etc/medium/control.toml"
 node_config="$server_root/etc/medium/node.toml"
 control_log="$workdir/control-plane.log"
@@ -81,7 +98,8 @@ init_log="$workdir/init-control.log"
 MEDIUM_ROOT="$server_root" \
 MEDIUM_CONTROL_BIND_ADDR="$control_addr" \
 MEDIUM_CONTROL_PUBLIC_URL="http://$control_addr" \
-MEDIUM_HOME_NODE_BIND_ADDR="$home_addr" \
+MEDIUM_NODE_LISTEN_ADDR="$home_addr" \
+MEDIUM_NODE_PUBLIC_ADDR="$home_addr" \
 cargo run -p linux-client --bin medium -- init-control >"$init_log"
 
 invite="$(sed -n 's/.*generated invite //p' "$init_log")"
@@ -107,7 +125,7 @@ OVERLAY_CONTROL_URL="http://$control_addr" \
 OVERLAY_SHARED_SECRET="$shared_secret" \
 cargo run -p home-node -- --config "$node_config" >"$home_log" 2>&1 &
 home_pid=$!
-wait_tcp 127.0.0.1 17002
+wait_tcp 127.0.0.1 "$home_port"
 
 OVERLAY_HOME="$client_home" MEDIUM_DEVICE_NAME="macbook" \
 cargo run -p linux-client --bin medium -- join "$invite" >"$workdir/join.log"
@@ -115,15 +133,15 @@ cargo run -p linux-client --bin medium -- join "$invite" >"$workdir/join.log"
 grep -q "joined macbook via http://$control_addr using invite v1" "$workdir/join.log"
 
 OVERLAY_HOME="$client_home" cargo run -p linux-client --bin medium -- devices >"$devices_log"
-grep -q "node-home ssh overlay@127.0.0.1:17002" "$devices_log"
+grep -q "node-1 ssh overlay@$home_addr" "$devices_log"
 
 mkdir -p "$client_home/.ssh/config.d"
 OVERLAY_HOME="$client_home" cargo run -p linux-client --bin medium -- \
   ssh sync --write-main-config >"$sync_log"
 grep -q "synced 1 SSH hosts" "$sync_log"
 grep -q "Include ~/.ssh/config.d/medium.conf" "$client_home/.ssh/config"
-grep -q "Host node-home" "$client_home/.ssh/config.d/medium.conf"
-grep -q "ProxyCommand medium proxy ssh --device node-home" "$client_home/.ssh/config.d/medium.conf"
+grep -q "Host node-1" "$client_home/.ssh/config.d/medium.conf"
+grep -q "ProxyCommand medium proxy ssh --device node-1" "$client_home/.ssh/config.d/medium.conf"
 
 cat >"$bin_dir/medium" <<EOF
 #!/usr/bin/env bash
@@ -132,7 +150,7 @@ OVERLAY_HOME="$client_home" exec "$(pwd)/target/debug/medium" "\$@"
 EOF
 chmod 0755 "$bin_dir/medium"
 
-python3 - "$target_log" <<'PY' &
+python3 - "$target_log" "$target_addr" <<'PY' &
 import socket
 import sys
 
@@ -140,7 +158,8 @@ target_log = sys.argv[1]
 ready_path = target_log.rsplit("/", 1)[0] + "/target.ready"
 with socket.socket() as server:
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind(("127.0.0.1", 2223))
+    host, port = sys.argv[2].rsplit(":", 1)
+    server.bind((host, int(port)))
     server.listen(1)
     with open(ready_path, "w") as ready:
         ready.write("ready\n")
@@ -171,7 +190,7 @@ PATH="$bin_dir:$PATH" HOME="$client_home" ssh \
   -o StrictHostKeyChecking=no \
   -o UserKnownHostsFile="$workdir/known_hosts" \
   -o ConnectTimeout=5 \
-  node-home true >"$ssh_stdout" 2>"$ssh_stderr" &
+  node-1 true >"$ssh_stdout" 2>"$ssh_stderr" &
 ssh_pid=$!
 
 wait "$target_pid"

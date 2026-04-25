@@ -16,7 +16,7 @@ pub async fn open_session(
         },
     )
     .await
-        .map_err(|_| StatusCode::BAD_REQUEST)?;
+    .map_err(|_| StatusCode::BAD_REQUEST)?;
     Ok(Json(grant))
 }
 
@@ -30,7 +30,10 @@ pub async fn issue_session_grant(
     request: &SessionOpenRequest,
     settings: &SessionSettings,
 ) -> anyhow::Result<SessionOpenGrant> {
-    let route = settings.registry.resolve_service_route(&request.service_id).await?;
+    let route = settings
+        .registry
+        .resolve_service_route(&request.service_id)
+        .await?;
     let session_id = format!("sess_{}", uuid::Uuid::new_v4().simple());
     let token = issue_session_token(
         &settings.shared_secret,
@@ -42,7 +45,7 @@ pub async fn issue_session_grant(
     Ok(SessionOpenGrant {
         session_id,
         service_id: request.service_id.clone(),
-        home_node_id: route.node_id,
+        node_id: route.node_id,
         relay_hint: None,
         authorization: SessionAuthorization {
             token,

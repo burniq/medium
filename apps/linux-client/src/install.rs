@@ -6,14 +6,14 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const DEFAULT_CONTROL_BIND_ADDR: &str = "0.0.0.0:8080";
-const DEFAULT_NODE_ID: &str = "node-home";
-const DEFAULT_SSH_SERVICE_ID: &str = "svc_home_ssh";
+const DEFAULT_NODE_ID: &str = "node-1";
+const DEFAULT_SSH_SERVICE_ID: &str = "svc_ssh";
 const DEFAULT_SSH_TARGET: &str = "127.0.0.1:22";
 const DEFAULT_SSH_USER: &str = "overlay";
 const CONTROL_PLANE_UNIT_TEMPLATE: &str =
     include_str!("../../../packaging/systemd/medium-control-plane.service");
-const HOME_NODE_UNIT_TEMPLATE: &str =
-    include_str!("../../../packaging/systemd/medium-home-node.service");
+const NODE_AGENT_UNIT_TEMPLATE: &str =
+    include_str!("../../../packaging/systemd/medium-node-agent.service");
 
 #[allow(dead_code)]
 pub struct InitControlReport {
@@ -45,7 +45,7 @@ impl InstallLayout {
             node_config_path: config_dir.join("node.toml"),
             database_path: state_dir.join("control-plane.db"),
             control_unit_path: systemd_unit_dir.join("medium-control-plane.service"),
-            node_unit_path: systemd_unit_dir.join("medium-home-node.service"),
+            node_unit_path: systemd_unit_dir.join("medium-node-agent.service"),
             config_dir,
             state_dir,
             systemd_unit_dir,
@@ -72,29 +72,34 @@ pub fn init_control(reconfigure: bool) -> anyhow::Result<InitControlReport> {
             String::new()
         }
     };
-    let node_bind_addr = match home_node_bind_addr() {
+    let node_addrs = match node_addrs() {
         Ok(value) => value,
         Err(error) => {
             config_errors.push(error.to_string());
-            String::new()
+            NodeAddrs {
+                listen_addr: String::new(),
+                public_addr: String::new(),
+            }
         }
     };
     if !config_errors.is_empty() {
         bail!(config_errors.join("; "));
     }
-    init_control_at(&root, &bind_addr, &control_url, &node_bind_addr, reconfigure)
+    init_control_at(&root, &bind_addr, &control_url, &node_addrs, reconfigure)
 }
 
 fn init_control_at(
     root: &Path,
     bind_addr: &str,
     control_url: &str,
-    node_bind_addr: &str,
+    node_addrs: &NodeAddrs,
     reconfigure: bool,
 ) -> anyhow::Result<InitControlReport> {
     let layout = InstallLayout::new(root);
     if layout.is_bootstrapped() && !reconfigure {
-        bail!("Medium control is already initialized; rerun with --reconfigure to rewrite bootstrap files");
+        bail!(
+            "Medium control is already initialized; rerun with --reconfigure to rewrite bootstrap files"
+        );
     }
 
     fs::create_dir_all(&layout.config_dir)
@@ -103,8 +108,8 @@ fn init_control_at(
         .with_context(|| format!("create {}", layout.state_dir.display()))?;
 
     let shared_secret = make_token("medium-shared-secret");
-    let bootstrap_token = make_token("medium-bootstrap");
-    let invite = client_api::format_join_invite(control_url, &bootstrap_token)?;
+    let control_key = make_token("medium-control-key");
+    let invite = client_api::format_join_invite(control_url, &control_key)?;
 
     write_control_config(
         &layout.control_config_path,
@@ -112,11 +117,13 @@ fn init_control_at(
         control_url,
         &layout.database_path,
         &shared_secret,
+        &control_key,
     )?;
     write_home_node_config(
         &layout.node_config_path,
         DEFAULT_NODE_ID,
-        node_bind_addr,
+        &node_addrs.listen_addr,
+        &node_addrs.public_addr,
         DEFAULT_SSH_SERVICE_ID,
     )?;
     touch_file(&layout.database_path)?;
@@ -142,10 +149,10 @@ fn control_bind_addr() -> String {
 }
 
 fn control_public_url(bind_addr: &str) -> anyhow::Result<String> {
-    if let Some(url) = env_string("OVERLAY_CONTROL_URL")
-        .or_else(|| env_string("MEDIUM_CONTROL_PUBLIC_URL"))
+    if let Some(url) =
+        env_string("OVERLAY_CONTROL_URL").or_else(|| env_string("MEDIUM_CONTROL_PUBLIC_URL"))
     {
-        return client_api::format_join_invite(&url, "bootstrap-placeholder")
+        return client_api::format_join_invite(&url, "control-key-placeholder")
             .map(|_| url)
             .map_err(|error| anyhow::anyhow!("invalid public control URL: {error}"));
     }
@@ -155,7 +162,7 @@ fn control_public_url(bind_addr: &str) -> anyhow::Result<String> {
         .ok_or_else(|| anyhow::anyhow!("MEDIUM_CONTROL_BIND_ADDR must include host:port"))?;
     if is_unsuitable_public_host(host) {
         bail!(
-            "OVERLAY_CONTROL_URL must be set to the public control URL when MEDIUM_CONTROL_BIND_ADDR uses {}",
+            "MEDIUM_CONTROL_PUBLIC_URL must be set to the public control URL when MEDIUM_CONTROL_BIND_ADDR uses {}",
             host
         );
     }
@@ -163,14 +170,42 @@ fn control_public_url(bind_addr: &str) -> anyhow::Result<String> {
     Ok(format!("http://{bind_addr}"))
 }
 
-fn home_node_bind_addr() -> anyhow::Result<String> {
-    env_string("MEDIUM_HOME_NODE_BIND_ADDR")
+struct NodeAddrs {
+    listen_addr: String,
+    public_addr: String,
+}
+
+fn node_addrs() -> anyhow::Result<NodeAddrs> {
+    if let Some(legacy_addr) = env_string("MEDIUM_HOME_NODE_BIND_ADDR")
         .or_else(|| env_string("OVERLAY_HOME_NODE_BIND_ADDR"))
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "MEDIUM_HOME_NODE_BIND_ADDR must be set to the reachable home-node TCP proxy address"
-            )
-        })
+    {
+        return Ok(NodeAddrs {
+            listen_addr: legacy_addr.clone(),
+            public_addr: legacy_addr,
+        });
+    }
+
+    let listen_addr =
+        env_string("MEDIUM_NODE_LISTEN_ADDR").unwrap_or_else(|| "0.0.0.0:17001".to_string());
+    let public_addr = if let Some(public_addr) = env_string("MEDIUM_NODE_PUBLIC_ADDR") {
+        public_addr
+    } else {
+        let host = split_host_port(&listen_addr)
+            .map(|(host, _port)| host)
+            .ok_or_else(|| anyhow::anyhow!("MEDIUM_NODE_LISTEN_ADDR must include host:port"))?;
+        if is_unsuitable_public_host(host) {
+            bail!(
+                "MEDIUM_NODE_PUBLIC_ADDR must be set when MEDIUM_NODE_LISTEN_ADDR uses {}",
+                host
+            );
+        }
+        listen_addr.clone()
+    };
+
+    Ok(NodeAddrs {
+        listen_addr,
+        public_addr,
+    })
 }
 
 fn write_control_config(
@@ -179,9 +214,10 @@ fn write_control_config(
     control_url: &str,
     database_path: &Path,
     shared_secret: &str,
+    control_key: &str,
 ) -> anyhow::Result<()> {
     let contents = format!(
-        "# Generated by medium init-control\nbind_addr = \"{bind_addr}\"\ndatabase_url = \"sqlite://{}\"\ncontrol_url = \"{control_url}\"\nshared_secret = \"{shared_secret}\"\n",
+        "# Generated by medium init-control\nbind_addr = \"{bind_addr}\"\ndatabase_url = \"sqlite://{}\"\ncontrol_url = \"{control_url}\"\nshared_secret = \"{shared_secret}\"\ncontrol_key = \"{control_key}\"\n",
         database_path.display()
     );
     fs::write(path, contents).with_context(|| format!("write {}", path.display()))
@@ -191,10 +227,11 @@ fn write_home_node_config(
     path: &Path,
     node_id: &str,
     bind_addr: &str,
+    public_addr: &str,
     ssh_service_id: &str,
 ) -> anyhow::Result<()> {
     let contents = format!(
-        "node_id = \"{node_id}\"\nnode_label = \"{node_id}\"\nbind_addr = \"{bind_addr}\"\n\n[[services]]\nid = \"{ssh_service_id}\"\nkind = \"ssh\"\ntarget = \"{DEFAULT_SSH_TARGET}\"\nuser_name = \"{DEFAULT_SSH_USER}\"\n"
+        "node_id = \"{node_id}\"\nnode_label = \"{node_id}\"\nbind_addr = \"{bind_addr}\"\npublic_addr = \"{public_addr}\"\n\n[[services]]\nid = \"{ssh_service_id}\"\nkind = \"ssh\"\ntarget = \"{DEFAULT_SSH_TARGET}\"\nuser_name = \"{DEFAULT_SSH_USER}\"\n"
     );
     fs::write(path, contents).with_context(|| format!("write {}", path.display()))
 }
@@ -215,9 +252,9 @@ fn write_systemd_units(
     .with_context(|| format!("write {}", layout.control_unit_path.display()))?;
     fs::write(
         &layout.node_unit_path,
-        render_home_node_unit(root, layout, control_url, shared_secret),
+        render_node_agent_unit(root, layout, control_url, shared_secret),
     )
-        .with_context(|| format!("write {}", layout.node_unit_path.display()))?;
+    .with_context(|| format!("write {}", layout.node_unit_path.display()))?;
     Ok(())
 }
 
@@ -245,18 +282,18 @@ fn render_control_plane_unit(
     )
 }
 
-fn render_home_node_unit(
+fn render_node_agent_unit(
     root: &Path,
     layout: &InstallLayout,
     control_url: &str,
     shared_secret: &str,
 ) -> String {
     render_unit(
-        HOME_NODE_UNIT_TEMPLATE,
+        NODE_AGENT_UNIT_TEMPLATE,
         &[
             (
-                "{{HOME_NODE_BIN}}",
-                &home_node_binary_path(root).display().to_string(),
+                "{{NODE_AGENT_BIN}}",
+                &node_agent_binary_path(root).display().to_string(),
             ),
             (
                 "{{NODE_CONFIG_PATH}}",
@@ -284,11 +321,11 @@ pub(crate) fn control_plane_binary_path(root: &Path) -> PathBuf {
     }
 }
 
-pub(crate) fn home_node_binary_path(root: &Path) -> PathBuf {
+pub(crate) fn node_agent_binary_path(root: &Path) -> PathBuf {
     if root == Path::new("/") {
-        PathBuf::from("/usr/bin/home-node")
+        PathBuf::from("/usr/bin/node-agent")
     } else {
-        root.join("usr").join("bin").join("home-node")
+        root.join("usr").join("bin").join("node-agent")
     }
 }
 
@@ -303,7 +340,10 @@ fn maybe_enable_systemd_services(root: &Path) -> anyhow::Result<()> {
         &systemctl,
         &["enable", "--now", "medium-control-plane.service"],
     )?;
-    run_command(&systemctl, &["enable", "--now", "medium-home-node.service"])?;
+    run_command(
+        &systemctl,
+        &["enable", "--now", "medium-node-agent.service"],
+    )?;
     Ok(())
 }
 
@@ -330,12 +370,7 @@ fn run_command(command: &str, args: &[&str]) -> anyhow::Result<()> {
         );
     }
 
-    bail!(
-        "command failed: {} {}: {}",
-        command,
-        args.join(" "),
-        stderr
-    );
+    bail!("command failed: {} {}: {}", command, args.join(" "), stderr);
 }
 
 fn touch_file(path: &Path) -> anyhow::Result<()> {
@@ -355,7 +390,9 @@ fn make_token(prefix: &str) -> String {
 }
 
 fn env_string(key: &str) -> Option<String> {
-    std::env::var(key).ok().filter(|value| !value.trim().is_empty())
+    std::env::var(key)
+        .ok()
+        .filter(|value| !value.trim().is_empty())
 }
 
 fn split_host_port(value: &str) -> Option<(&str, &str)> {

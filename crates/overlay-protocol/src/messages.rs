@@ -40,7 +40,7 @@ pub struct SessionOpenRequest {
 pub struct SessionOpenGrant {
     pub session_id: String,
     pub service_id: String,
-    pub home_node_id: String,
+    pub node_id: String,
     pub relay_hint: Option<String>,
     pub authorization: SessionAuthorization,
 }
@@ -81,6 +81,7 @@ pub struct BootstrapInviteResponse {
     pub code: String,
     pub invite: String,
     pub bootstrap_token: String,
+    pub control_key: String,
     pub expires_at: Option<String>,
 }
 

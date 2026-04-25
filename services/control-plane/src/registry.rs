@@ -1,7 +1,8 @@
-use overlay_protocol::{
-    DeviceCatalogResponse, DeviceRecord, RegisterNodeRequest, SshEndpoint,
+use overlay_protocol::{DeviceCatalogResponse, DeviceRecord, RegisterNodeRequest, SshEndpoint};
+use sqlx::{
+    Row, SqlitePool,
+    sqlite::{SqliteConnectOptions, SqlitePoolOptions},
 };
-use sqlx::{Row, SqlitePool, sqlite::{SqliteConnectOptions, SqlitePoolOptions}};
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]

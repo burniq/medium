@@ -6,7 +6,7 @@ const SUPPORTED_INVITE_VERSION: u32 = 1;
 pub struct Invite {
     pub version: u32,
     pub control_url: String,
-    pub bootstrap_token: String,
+    pub control_key: String,
 }
 
 pub fn parse_invite(raw: &str) -> anyhow::Result<Invite> {
@@ -26,7 +26,7 @@ pub fn parse_invite(raw: &str) -> anyhow::Result<Invite> {
 
     let mut version = None;
     let mut control_url = None;
-    let mut bootstrap_token = None;
+    let mut control_key = None;
 
     for pair in query.split('&') {
         let (key, value) = pair
@@ -47,11 +47,11 @@ pub fn parse_invite(raw: &str) -> anyhow::Result<Invite> {
                 }
                 control_url = Some(value.to_string());
             }
-            "token" => {
+            "control_key" => {
                 if value.is_empty() {
-                    bail!("invite bootstrap token cannot be empty");
+                    bail!("invite control key cannot be empty");
                 }
-                bootstrap_token = Some(value.to_string());
+                control_key = Some(value.to_string());
             }
             _ => {}
         }
@@ -65,6 +65,6 @@ pub fn parse_invite(raw: &str) -> anyhow::Result<Invite> {
     Ok(Invite {
         version,
         control_url: control_url.context("invite is missing control URL")?,
-        bootstrap_token: bootstrap_token.context("invite is missing bootstrap token")?,
+        control_key: control_key.context("invite is missing control key")?,
     })
 }

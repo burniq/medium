@@ -56,15 +56,15 @@ fn run_requires_config_flag() {
 fn run_uses_default_agent_mode_with_config() -> anyhow::Result<()> {
     let config_path = write_config(
         r#"
-node_id = "node-home"
+node_id = "node-1"
 
 [[services]]
-id = "svc_home_openclaw"
+id = "svc_openclaw"
 kind = "https"
 target = "127.0.0.1:3000"
 
 [[services]]
-id = "svc_home_ssh"
+id = "svc_ssh"
 kind = "ssh"
 target = "127.0.0.1:22"
 "#,
@@ -78,10 +78,10 @@ target = "127.0.0.1:22"
     ])
     .map_err(anyhow::Error::msg)?;
 
-    assert!(output.contains("agent ready for node-home"));
+    assert!(output.contains("agent ready for node-1"));
     assert!(output.contains("2 services"));
-    assert!(output.contains("svc_home_openclaw:https@127.0.0.1:3000"));
-    assert!(output.contains("svc_home_ssh:ssh@127.0.0.1:22"));
+    assert!(output.contains("svc_openclaw:https@127.0.0.1:3000"));
+    assert!(output.contains("svc_ssh:ssh@127.0.0.1:22"));
     Ok(())
 }
 
@@ -100,9 +100,10 @@ fn app_state_saves_under_state_directory() -> anyhow::Result<()> {
     let paths = AppPaths::from_home(home.path());
     let state = AppState {
         server_url: "https://example.test".to_string(),
-        device_name: "node-home".to_string(),
+        device_name: "node-1".to_string(),
         bootstrap_code: "ABC123".to_string(),
         invite_version: 0,
+        control_key: String::new(),
     };
 
     state.save(&paths)?;
@@ -127,6 +128,7 @@ fn app_state_loads_legacy_overlay_state_and_migrates_it() -> anyhow::Result<()> 
         device_name: "legacy-node".to_string(),
         bootstrap_code: "LEGACY123".to_string(),
         invite_version: 0,
+        control_key: String::new(),
     };
 
     fs::create_dir_all(legacy_state_path.parent().unwrap())?;

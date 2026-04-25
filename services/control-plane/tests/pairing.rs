@@ -47,14 +47,16 @@ async fn bootstrap_route_returns_medium_join_invite() {
 
     assert_eq!(payload.expires_at, None);
     assert!(payload.bootstrap_token.starts_with("ovr-"));
+    assert!(payload.control_key.starts_with("medium-control-key-"));
     assert_eq!(legacy_payload.code, payload.bootstrap_token);
     assert_eq!(
         payload.invite,
         format!(
-            "medium://join?v=1&control=https://control.example.test&token={}",
-            payload.bootstrap_token
+            "medium://join?v=1&control=https://control.example.test&control_key={}",
+            payload.control_key
         )
     );
+    assert!(!payload.invite.contains("token="));
 }
 
 #[tokio::test]
@@ -85,8 +87,8 @@ async fn bootstrap_route_ignores_invalid_forwarded_headers() {
     assert_eq!(
         payload.invite,
         format!(
-            "medium://join?v=1&control=http://127.0.0.1:8080&token={}",
-            payload.bootstrap_token
+            "medium://join?v=1&control=http://127.0.0.1:8080&control_key={}",
+            payload.control_key
         )
     );
 }

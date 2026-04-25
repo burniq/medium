@@ -70,9 +70,7 @@ fn ensure_main_include(
     }
 
     if !has_medium_include && !write_main_config {
-        anyhow::bail!(
-            "main SSH config is missing medium include; re-run with --write-main-config"
-        );
+        anyhow::bail!("main SSH config is missing medium include; re-run with --write-main-config");
     }
 
     if !has_medium_include {

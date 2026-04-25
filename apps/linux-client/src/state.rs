@@ -13,6 +13,8 @@ pub struct AppState {
     pub bootstrap_code: String,
     #[serde(default)]
     pub invite_version: u32,
+    #[serde(default)]
+    pub control_key: String,
 }
 
 impl AppState {

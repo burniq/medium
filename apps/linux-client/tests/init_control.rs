@@ -47,12 +47,15 @@ impl Drop for EnvGuard {
 
 #[tokio::test]
 async fn init_control_creates_expected_paths_and_files() -> anyhow::Result<()> {
-    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
     let temp = tempfile::tempdir()?;
     let _root = EnvGuard::set("MEDIUM_ROOT", temp.path());
     let _public_url = EnvGuard::set_str("OVERLAY_CONTROL_URL", "https://control.example.test");
     let _control_bind = EnvGuard::set_str("MEDIUM_CONTROL_BIND_ADDR", "0.0.0.0:8080");
-    let _node_bind = EnvGuard::set_str("MEDIUM_HOME_NODE_BIND_ADDR", "198.51.100.24:17001");
+    let _node_listen = EnvGuard::set_str("MEDIUM_NODE_LISTEN_ADDR", "198.51.100.24:17001");
+    let _node_public = EnvGuard::set_str("MEDIUM_NODE_PUBLIC_ADDR", "198.51.100.24:17001");
 
     let output = run_main(vec!["medium".to_string(), "init-control".to_string()])
         .await
@@ -72,17 +75,21 @@ async fn init_control_creates_expected_paths_and_files() -> anyhow::Result<()> {
     assert!(control_config.contains("control_url = \"https://control.example.test\""));
     assert!(control_config.contains("database_url = \"sqlite://"));
     assert!(control_config.contains("shared_secret = \""));
+    assert!(control_config.contains("control_key = \""));
     assert!(control_config.contains(&format!(
         "database_url = \"sqlite://{}\"",
         database_path.display()
     )));
 
     let node_config = load_from_path(&node_config_path)?;
-    assert_eq!(node_config.node_id, "node-home");
+    assert_eq!(node_config.node_id, "node-1");
     assert_eq!(node_config.bind_addr, "198.51.100.24:17001");
     assert_eq!(node_config.services.len(), 1);
-    assert_eq!(node_config.services[0].id, "svc_home_ssh");
-    assert_eq!(node_config.services[0].user_name.as_deref(), Some("overlay"));
+    assert_eq!(node_config.services[0].id, "svc_ssh");
+    assert_eq!(
+        node_config.services[0].user_name.as_deref(),
+        Some("overlay")
+    );
 
     let registration = build_registration(&node_config);
     assert_eq!(registration.endpoints.len(), 1);
@@ -93,17 +100,91 @@ async fn init_control_creates_expected_paths_and_files() -> anyhow::Result<()> {
     );
 
     assert!(output.contains("initialized Medium control"));
-    assert!(output.contains("medium://join?v=1&control=https://control.example.test&token="));
+    assert!(output.contains("medium://join?v=1&control=https://control.example.test&control_key="));
+    assert!(!output.contains("&token="));
+    Ok(())
+}
+
+#[tokio::test]
+async fn init_control_allows_domainless_control_url_from_concrete_bind_addr() -> anyhow::Result<()>
+{
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
+    let temp = tempfile::tempdir()?;
+    let _root = EnvGuard::set("MEDIUM_ROOT", temp.path());
+    let _clear_public = EnvGuard::set_str("MEDIUM_CONTROL_PUBLIC_URL", "");
+    let _clear_legacy_public = EnvGuard::set_str("OVERLAY_CONTROL_URL", "");
+    let _control_bind = EnvGuard::set_str("MEDIUM_CONTROL_BIND_ADDR", "198.51.100.24:8080");
+    let _node_listen = EnvGuard::set_str("MEDIUM_NODE_LISTEN_ADDR", "198.51.100.24:17001");
+    let _clear_node_public = EnvGuard::set_str("MEDIUM_NODE_PUBLIC_ADDR", "");
+
+    let output = run_main(vec!["medium".to_string(), "init-control".to_string()])
+        .await
+        .map_err(anyhow::Error::msg)?
+        .expect("init-control should return a summary");
+
+    assert!(output.contains("medium://join?v=1&control=http://198.51.100.24:8080&control_key="));
+    assert!(!output.contains("&token="));
+    Ok(())
+}
+
+#[tokio::test]
+async fn init_control_requires_public_addresses_for_wildcard_binds() -> anyhow::Result<()> {
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
+    let temp = tempfile::tempdir()?;
+    let _root = EnvGuard::set("MEDIUM_ROOT", temp.path());
+    let _control_bind = EnvGuard::set_str("MEDIUM_CONTROL_BIND_ADDR", "0.0.0.0:8080");
+    let _clear_public = EnvGuard::set_str("MEDIUM_CONTROL_PUBLIC_URL", "");
+    let _clear_legacy_public = EnvGuard::set_str("OVERLAY_CONTROL_URL", "");
+    let _node_listen = EnvGuard::set_str("MEDIUM_NODE_LISTEN_ADDR", "0.0.0.0:17001");
+    let _clear_node_public = EnvGuard::set_str("MEDIUM_NODE_PUBLIC_ADDR", "");
+    let _clear_legacy_node = EnvGuard::set_str("MEDIUM_HOME_NODE_BIND_ADDR", "");
+
+    let error = run_main(vec!["medium".to_string(), "init-control".to_string()])
+        .await
+        .unwrap_err();
+
+    assert!(error.contains("MEDIUM_CONTROL_PUBLIC_URL"));
+    assert!(error.contains("MEDIUM_NODE_PUBLIC_ADDR"));
+    Ok(())
+}
+
+#[tokio::test]
+async fn init_control_accepts_legacy_home_node_bind_addr() -> anyhow::Result<()> {
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
+    let temp = tempfile::tempdir()?;
+    let _root = EnvGuard::set("MEDIUM_ROOT", temp.path());
+    let _public_url =
+        EnvGuard::set_str("MEDIUM_CONTROL_PUBLIC_URL", "https://control.example.test");
+    let _control_bind = EnvGuard::set_str("MEDIUM_CONTROL_BIND_ADDR", "0.0.0.0:8080");
+    let _clear_node_listen = EnvGuard::set_str("MEDIUM_NODE_LISTEN_ADDR", "");
+    let _clear_node_public = EnvGuard::set_str("MEDIUM_NODE_PUBLIC_ADDR", "");
+    let _legacy_node_bind = EnvGuard::set_str("MEDIUM_HOME_NODE_BIND_ADDR", "198.51.100.24:17001");
+
+    run_main(vec!["medium".to_string(), "init-control".to_string()])
+        .await
+        .map_err(anyhow::Error::msg)?;
+
+    let node_config = load_from_path(&temp.path().join("etc/medium/node.toml"))?;
+    assert_eq!(node_config.bind_addr, "198.51.100.24:17001");
     Ok(())
 }
 
 #[tokio::test]
 async fn init_control_refuses_existing_install_without_reconfigure() -> anyhow::Result<()> {
-    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
     let temp = tempfile::tempdir()?;
     let _root = EnvGuard::set("MEDIUM_ROOT", temp.path());
     let _public_url = EnvGuard::set_str("OVERLAY_CONTROL_URL", "https://control.example.test");
-    let _node_bind = EnvGuard::set_str("MEDIUM_HOME_NODE_BIND_ADDR", "198.51.100.24:17001");
+    let _node_listen = EnvGuard::set_str("MEDIUM_NODE_LISTEN_ADDR", "198.51.100.24:17001");
+    let _node_public = EnvGuard::set_str("MEDIUM_NODE_PUBLIC_ADDR", "198.51.100.24:17001");
 
     run_main(vec!["medium".to_string(), "init-control".to_string()])
         .await
@@ -127,20 +208,23 @@ async fn init_control_refuses_existing_install_without_reconfigure() -> anyhow::
 }
 
 #[tokio::test]
-async fn init_control_requires_explicit_public_and_node_addresses_when_defaults_are_not_usable(
-) -> anyhow::Result<()> {
-    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+async fn init_control_requires_explicit_public_and_node_addresses_when_defaults_are_not_usable()
+-> anyhow::Result<()> {
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
     let temp = tempfile::tempdir()?;
     let _root = EnvGuard::set("MEDIUM_ROOT", temp.path());
     let _control_bind = EnvGuard::set_str("MEDIUM_CONTROL_BIND_ADDR", "0.0.0.0:8080");
     let _clear_public = EnvGuard::set_str("OVERLAY_CONTROL_URL", "");
-    let _clear_node = EnvGuard::set_str("MEDIUM_HOME_NODE_BIND_ADDR", "");
+    let _clear_node = EnvGuard::set_str("MEDIUM_NODE_PUBLIC_ADDR", "");
+    let _clear_legacy_node = EnvGuard::set_str("MEDIUM_HOME_NODE_BIND_ADDR", "");
 
     let error = run_main(vec!["medium".to_string(), "init-control".to_string()])
         .await
         .unwrap_err();
 
-    assert!(error.contains("OVERLAY_CONTROL_URL"));
-    assert!(error.contains("MEDIUM_HOME_NODE_BIND_ADDR"));
+    assert!(error.contains("MEDIUM_CONTROL_PUBLIC_URL"));
+    assert!(error.contains("MEDIUM_NODE_PUBLIC_ADDR"));
     Ok(())
 }

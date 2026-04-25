@@ -5,10 +5,10 @@ Medium is a personal service-access overlay for reaching your own machines from 
 The first practical target is simple: install Medium on a Linux home server and on a client machine, join the client to the server, then use regular SSH:
 
 ```sh
-ssh node-home
+ssh node-1
 ```
 
-Medium is currently an early MVP. The implemented path focuses on a control plane, a headless home-node agent, SQLite-backed registry state, and generated SSH config.
+Medium is currently an early MVP. The implemented path focuses on a control plane, a headless node agent, SQLite-backed registry state, and generated SSH config.
 
 ## Install
 
@@ -28,7 +28,7 @@ The installer builds from source with Cargo and installs these binaries into `/u
 
 - `medium`
 - `control-plane`
-- `home-node`
+- `node-agent`
 
 Use a different install prefix if needed:
 
@@ -41,8 +41,8 @@ curl -fsSL https://raw.githubusercontent.com/k1t-ops/medium/main/scripts/install
 Run this on the Linux host that will act as your first Medium server:
 
 ```sh
-sudo MEDIUM_CONTROL_PUBLIC_URL="https://control.example.com" \
-  MEDIUM_HOME_NODE_BIND_ADDR="home.example.com:17001" \
+sudo MEDIUM_CONTROL_PUBLIC_URL="http://192.168.1.10:8080" \
+  MEDIUM_NODE_PUBLIC_ADDR="192.168.1.10:17001" \
   medium init-control
 ```
 
@@ -59,10 +59,10 @@ medium doctor
 Run this on a client machine:
 
 ```sh
-medium join 'medium://join?v=1&control=https://control.example.com&token=...'
+medium join 'medium://join?v=1&control=http://192.168.1.10:8080&control_key=...'
 medium devices
 medium ssh sync
-ssh node-home
+ssh node-1
 ```
 
 `medium ssh sync` writes a Medium-managed SSH include file and keeps the main SSH config limited to a single `Include`.

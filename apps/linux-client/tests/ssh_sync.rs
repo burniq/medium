@@ -5,10 +5,10 @@ use std::fs;
 
 fn sample_device() -> DeviceRecord {
     DeviceRecord {
-        id: "node-home".into(),
-        name: "node-home".into(),
+        id: "node-1".into(),
+        name: "node-1".into(),
         ssh: Some(SshEndpoint {
-            service_id: "svc_home_ssh".into(),
+            service_id: "svc_ssh".into(),
             host: "127.0.0.1".into(),
             port: 2222,
             user: "overlay".into(),
@@ -48,7 +48,7 @@ fn sync_migrates_legacy_overlay_managed_state() -> anyhow::Result<()> {
     )?;
     fs::write(
         &legacy_overlay_path,
-        "# Managed by overlay. DO NOT EDIT.\n\nHost node-home\n  ProxyCommand overlay proxy ssh --device node-home\n",
+        "# Managed by overlay. DO NOT EDIT.\n\nHost node-1\n  ProxyCommand overlay proxy ssh --device node-1\n",
     )?;
 
     sync_ssh_config(&paths, &[sample_device()], true)?;
@@ -58,11 +58,11 @@ fn sync_migrates_legacy_overlay_managed_state() -> anyhow::Result<()> {
     assert!(!main_config.contains("Include ~/.ssh/config.d/overlay.conf"));
 
     let managed = fs::read_to_string(&paths.overlay_ssh_config_path)?;
-    assert!(managed.contains("ProxyCommand medium proxy ssh --device node-home"));
+    assert!(managed.contains("ProxyCommand medium proxy ssh --device node-1"));
 
     if legacy_overlay_path.exists() {
         let legacy = fs::read_to_string(&legacy_overlay_path)?;
-        assert!(!legacy.contains("ProxyCommand overlay proxy ssh --device node-home"));
+        assert!(!legacy.contains("ProxyCommand overlay proxy ssh --device node-1"));
     }
 
     Ok(())
@@ -81,11 +81,11 @@ fn sync_removes_stale_overlay_include_once_medium_include_exists() -> anyhow::Re
     )?;
     fs::write(
         &legacy_overlay_path,
-        "# Managed by overlay. DO NOT EDIT.\n\nHost node-home\n  ProxyCommand overlay proxy ssh --device node-home\n",
+        "# Managed by overlay. DO NOT EDIT.\n\nHost node-1\n  ProxyCommand overlay proxy ssh --device node-1\n",
     )?;
     fs::write(
         &paths.overlay_ssh_config_path,
-        "# Managed by medium. DO NOT EDIT.\n\nHost node-home\n  ProxyCommand medium proxy ssh --device node-home\n",
+        "# Managed by medium. DO NOT EDIT.\n\nHost node-1\n  ProxyCommand medium proxy ssh --device node-1\n",
     )?;
 
     sync_ssh_config(&paths, &[sample_device()], false)?;
@@ -96,7 +96,7 @@ fn sync_removes_stale_overlay_include_once_medium_include_exists() -> anyhow::Re
 
     if legacy_overlay_path.exists() {
         let legacy = fs::read_to_string(&legacy_overlay_path)?;
-        assert!(!legacy.contains("ProxyCommand overlay proxy ssh --device node-home"));
+        assert!(!legacy.contains("ProxyCommand overlay proxy ssh --device node-1"));
     }
 
     Ok(())
@@ -144,8 +144,8 @@ fn sync_writes_include_and_managed_medium_config() -> anyhow::Result<()> {
     assert!(main_config.contains("Include ~/.ssh/config.d/medium.conf"));
 
     let managed = fs::read_to_string(&paths.overlay_ssh_config_path)?;
-    assert!(managed.contains("Host node-home"));
-    assert!(managed.contains("ProxyCommand medium proxy ssh --device node-home"));
+    assert!(managed.contains("Host node-1"));
+    assert!(managed.contains("ProxyCommand medium proxy ssh --device node-1"));
     assert!(managed.contains("User overlay"));
     Ok(())
 }
@@ -157,7 +157,7 @@ fn sync_creates_backup_before_rewriting_managed_config() -> anyhow::Result<()> {
 
     sync_ssh_config(&paths, &[sample_device()], true)?;
     let first = fs::read_to_string(&paths.overlay_ssh_config_path)?;
-    assert!(first.contains("Host node-home"));
+    assert!(first.contains("Host node-1"));
 
     let other = DeviceRecord {
         id: "node-lab".into(),
@@ -175,9 +175,9 @@ fn sync_creates_backup_before_rewriting_managed_config() -> anyhow::Result<()> {
 
     let managed = fs::read_to_string(&paths.overlay_ssh_config_path)?;
     assert!(managed.contains("Host node-lab"));
-    assert!(!managed.contains("Host node-home"));
+    assert!(!managed.contains("Host node-1"));
 
     let backup = fs::read_to_string(report.managed_backup_path.unwrap())?;
-    assert!(backup.contains("Host node-home"));
+    assert!(backup.contains("Host node-1"));
     Ok(())
 }

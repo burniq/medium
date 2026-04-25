@@ -15,7 +15,10 @@ pub fn build_registration(cfg: &NodeConfig) -> RegisterNodeRequest {
         endpoints: vec![NodeEndpoint {
             kind: EndpointKind::TcpProxy,
             schema_version: 1,
-            addr: cfg.bind_addr.clone(),
+            addr: cfg
+                .public_addr
+                .clone()
+                .unwrap_or_else(|| cfg.bind_addr.clone()),
             priority: 10,
         }],
         services: cfg

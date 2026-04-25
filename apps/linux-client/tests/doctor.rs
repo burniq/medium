@@ -1,5 +1,5 @@
-use linux_client::run_main;
 use linux_client::paths::AppPaths;
+use linux_client::run_main;
 use std::fs;
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
@@ -56,11 +56,11 @@ case "$*" in
   "is-active medium-control-plane.service")
     printf 'active\n'
     ;;
-  "is-enabled medium-home-node.service")
+  "is-enabled medium-node-agent.service")
     printf 'disabled\n'
     exit 1
     ;;
-  "is-active medium-home-node.service")
+  "is-active medium-node-agent.service")
     printf 'inactive\n'
     exit 3
     ;;
@@ -104,7 +104,9 @@ exit 1
 
 #[tokio::test]
 async fn doctor_reports_missing_client_and_server_state() -> anyhow::Result<()> {
-    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
     let temp = tempfile::tempdir()?;
     let home_dir = temp.path().join("home");
     let root_dir = temp.path().join("root");
@@ -131,14 +133,16 @@ async fn doctor_reports_missing_client_and_server_state() -> anyhow::Result<()> 
     assert!(output.contains("control-db: missing"));
     assert!(output.contains("ssh-managed-config: missing"));
     assert!(output.contains("service medium-control-plane.service: unavailable"));
-    assert!(output.contains("service medium-home-node.service: unavailable"));
+    assert!(output.contains("service medium-node-agent.service: unavailable"));
     assert!(output.contains(&paths.state_path.display().to_string()));
     Ok(())
 }
 
 #[tokio::test]
 async fn doctor_reports_bootstrapped_files_and_service_statuses() -> anyhow::Result<()> {
-    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
     let temp = tempfile::tempdir()?;
     let home_dir = temp.path().join("home");
     let root_dir = temp.path().join("root");
@@ -165,14 +169,17 @@ async fn doctor_reports_bootstrapped_files_and_service_statuses() -> anyhow::Res
         &paths.ssh_config_path,
         "Include ~/.ssh/config.d/medium.conf\nHost existing\n  HostName example.test\n",
     )?;
-    fs::write(&paths.overlay_ssh_config_path, "Host medium-laptop\n  HostName 198.51.100.20\n")?;
+    fs::write(
+        &paths.overlay_ssh_config_path,
+        "Host medium-laptop\n  HostName 198.51.100.20\n",
+    )?;
     fs::write(
         root_dir.join("etc/medium/control.toml"),
-        "bind_addr = \"0.0.0.0:8080\"\ndatabase_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\n",
+        "bind_addr = \"0.0.0.0:8080\"\ndatabase_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\ncontrol_key = \"ctrl_pub_123\"\n",
     )?;
     fs::write(
         root_dir.join("etc/medium/node.toml"),
-        "node_id = \"node-home\"\nnode_label = \"node-home\"\nbind_addr = \"198.51.100.24:17001\"\n\n[[services]]\nid = \"svc_home_ssh\"\nkind = \"ssh\"\ntarget = \"127.0.0.1:22\"\nuser_name = \"overlay\"\n",
+        "node_id = \"node-1\"\nnode_label = \"node-1\"\nbind_addr = \"198.51.100.24:17001\"\n\n[[services]]\nid = \"svc_ssh\"\nkind = \"ssh\"\ntarget = \"127.0.0.1:22\"\nuser_name = \"overlay\"\n",
     )?;
     fs::write(root_dir.join("var/lib/medium/control-plane.db"), [])?;
 
@@ -195,18 +202,16 @@ async fn doctor_reports_bootstrapped_files_and_service_statuses() -> anyhow::Res
     assert!(output.contains("control-db: ok"));
     assert!(output.contains("ssh-include: ok"));
     assert!(output.contains("ssh-managed-config: ok"));
-    assert!(output.contains(
-        "service medium-control-plane.service: enabled, active"
-    ));
-    assert!(output.contains(
-        "service medium-home-node.service: disabled, inactive"
-    ));
+    assert!(output.contains("service medium-control-plane.service: enabled, active"));
+    assert!(output.contains("service medium-node-agent.service: disabled, inactive"));
     Ok(())
 }
 
 #[tokio::test]
 async fn doctor_reads_legacy_state_and_ssh_without_migrating() -> anyhow::Result<()> {
-    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
     let temp = tempfile::tempdir()?;
     let home_dir = temp.path().join("home");
     let root_dir = temp.path().join("root");
@@ -236,15 +241,15 @@ async fn doctor_reads_legacy_state_and_ssh_without_migrating() -> anyhow::Result
     )?;
     fs::write(
         &legacy_managed_path,
-        "# Managed by overlay. DO NOT EDIT.\n\nHost node-home\n  ProxyCommand overlay proxy ssh --device node-home\n",
+        "# Managed by overlay. DO NOT EDIT.\n\nHost node-1\n  ProxyCommand overlay proxy ssh --device node-1\n",
     )?;
     fs::write(
         root_dir.join("etc/medium/control.toml"),
-        "bind_addr = \"0.0.0.0:8080\"\ndatabase_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\n",
+        "bind_addr = \"0.0.0.0:8080\"\ndatabase_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\ncontrol_key = \"ctrl_pub_123\"\n",
     )?;
     fs::write(
         root_dir.join("etc/medium/node.toml"),
-        "node_id = \"node-home\"\nnode_label = \"node-home\"\nbind_addr = \"198.51.100.24:17001\"\n\n[[services]]\nid = \"svc_home_ssh\"\nkind = \"ssh\"\ntarget = \"127.0.0.1:22\"\nuser_name = \"overlay\"\n",
+        "node_id = \"node-1\"\nnode_label = \"node-1\"\nbind_addr = \"198.51.100.24:17001\"\n\n[[services]]\nid = \"svc_ssh\"\nkind = \"ssh\"\ntarget = \"127.0.0.1:22\"\nuser_name = \"overlay\"\n",
     )?;
     fs::write(root_dir.join("var/lib/medium/control-plane.db"), [])?;
 
@@ -257,9 +262,11 @@ async fn doctor_reads_legacy_state_and_ssh_without_migrating() -> anyhow::Result
         .map_err(anyhow::Error::msg)?
         .expect("doctor should return a report");
 
-    assert!(output.contains(
-        "join-state: ok (device legacy-laptop via https://legacy-control.example.test"
-    ));
+    assert!(
+        output.contains(
+            "join-state: ok (device legacy-laptop via https://legacy-control.example.test"
+        )
+    );
     assert!(output.contains("legacy state"));
     assert!(output.contains("ssh-include: ok (legacy overlay.conf)"));
     assert!(output.contains("ssh-managed-config: ok (legacy"));
@@ -272,7 +279,9 @@ async fn doctor_reads_legacy_state_and_ssh_without_migrating() -> anyhow::Result
 
 #[tokio::test]
 async fn doctor_reports_structurally_invalid_configs() -> anyhow::Result<()> {
-    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
     let temp = tempfile::tempdir()?;
     let home_dir = temp.path().join("home");
     let root_dir = temp.path().join("root");
@@ -286,11 +295,11 @@ async fn doctor_reports_structurally_invalid_configs() -> anyhow::Result<()> {
 
     fs::write(
         root_dir.join("etc/medium/control.toml"),
-        "# bind_addr = \"0.0.0.0:8080\"\n# database_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\n",
+        "# bind_addr = \"0.0.0.0:8080\"\n# database_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\ncontrol_key = \"ctrl_pub_123\"\n",
     )?;
     fs::write(
         root_dir.join("etc/medium/node.toml"),
-        "# node_id = \"node-home\"\nnode_label = \"node-home\"\n",
+        "# node_id = \"node-1\"\nnode_label = \"node-1\"\n",
     )?;
 
     let _home = EnvGuard::set_path("OVERLAY_HOME", &home_dir);
@@ -310,9 +319,11 @@ async fn doctor_reports_structurally_invalid_configs() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn doctor_does_not_treat_user_owned_overlay_conf_as_legacy_managed_state(
-) -> anyhow::Result<()> {
-    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+async fn doctor_does_not_treat_user_owned_overlay_conf_as_legacy_managed_state()
+-> anyhow::Result<()> {
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
     let temp = tempfile::tempdir()?;
     let home_dir = temp.path().join("home");
     let root_dir = temp.path().join("root");
@@ -352,7 +363,9 @@ async fn doctor_does_not_treat_user_owned_overlay_conf_as_legacy_managed_state(
 
 #[tokio::test]
 async fn doctor_prefers_current_medium_ssh_state_over_legacy_overlay_state() -> anyhow::Result<()> {
-    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
     let temp = tempfile::tempdir()?;
     let home_dir = temp.path().join("home");
     let root_dir = temp.path().join("root");
@@ -372,11 +385,11 @@ async fn doctor_prefers_current_medium_ssh_state_over_legacy_overlay_state() -> 
     )?;
     fs::write(
         &legacy_overlay_path,
-        "# Managed by overlay. DO NOT EDIT.\n\nHost node-home\n  ProxyCommand overlay proxy ssh --device node-home\n",
+        "# Managed by overlay. DO NOT EDIT.\n\nHost node-1\n  ProxyCommand overlay proxy ssh --device node-1\n",
     )?;
     fs::write(
         &paths.overlay_ssh_config_path,
-        "# Managed by medium. DO NOT EDIT.\n\nHost node-home\n  ProxyCommand medium proxy ssh --device node-home\n",
+        "# Managed by medium. DO NOT EDIT.\n\nHost node-1\n  ProxyCommand medium proxy ssh --device node-1\n",
     )?;
 
     let _home = EnvGuard::set_path("OVERLAY_HOME", &home_dir);

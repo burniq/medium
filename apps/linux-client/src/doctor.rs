@@ -8,7 +8,7 @@ use std::path::Path;
 use std::process::Command;
 
 const CONTROL_SERVICE: &str = "medium-control-plane.service";
-const NODE_SERVICE: &str = "medium-home-node.service";
+const NODE_SERVICE: &str = "medium-node-agent.service";
 const MAIN_INCLUDE_LINE: &str = "Include ~/.ssh/config.d/medium.conf";
 const LEGACY_MAIN_INCLUDE_LINE: &str = "Include ~/.ssh/config.d/overlay.conf";
 const LEGACY_MANAGED_HEADER: &str = "# Managed by overlay.";
@@ -47,8 +47,8 @@ pub fn inspect(paths: &AppPaths) -> anyhow::Result<DoctorReport> {
         &install::control_plane_binary_path(&root),
     ));
     lines.push(path_line(
-        "home-node-bin",
-        &install::home_node_binary_path(&root),
+        "node-agent-bin",
+        &install::node_agent_binary_path(&root),
     ));
     lines.push(ssh.include_line());
     lines.push(ssh.managed_line());
@@ -73,10 +73,20 @@ fn control_config_line(path: &Path) -> anyhow::Result<String> {
 
     let raw = fs::read_to_string(path)?;
     let values = parse_simple_toml_strings(&raw);
-    let missing_fields = ["bind_addr", "database_url", "control_url", "shared_secret"]
-        .into_iter()
-        .filter(|field| values.get(*field).is_none_or(|value| value.trim().is_empty()))
-        .collect::<Vec<_>>();
+    let missing_fields = [
+        "bind_addr",
+        "database_url",
+        "control_url",
+        "shared_secret",
+        "control_key",
+    ]
+    .into_iter()
+    .filter(|field| {
+        values
+            .get(*field)
+            .is_none_or(|value| value.trim().is_empty())
+    })
+    .collect::<Vec<_>>();
 
     if missing_fields.is_empty() {
         return Ok("control-config-valid: ok".into());
@@ -117,7 +127,10 @@ fn state_line(paths: &AppPaths) -> anyhow::Result<String> {
                     state.server_url,
                     legacy_path.display()
                 )),
-                None => Ok(format!("join-state: missing ({})", paths.state_path.display())),
+                None => Ok(format!(
+                    "join-state: missing ({})",
+                    paths.state_path.display()
+                )),
             }
         }
     }
@@ -131,7 +144,10 @@ fn read_state(paths: &AppPaths, path: &Path) -> anyhow::Result<Option<AppState>>
     };
 
     let state = serde_json::from_str::<AppState>(&raw).map_err(|error| {
-        anyhow::anyhow!("invalid state at {}: {error}", display_state_path(paths, path))
+        anyhow::anyhow!(
+            "invalid state at {}: {error}",
+            display_state_path(paths, path)
+        )
     })?;
     Ok(Some(state))
 }
@@ -159,7 +175,10 @@ fn parse_simple_toml_strings(raw: &str) -> std::collections::BTreeMap<String, St
 }
 
 fn parse_simple_toml_string_line(line: &str) -> Option<(String, String)> {
-    let line = line.split_once('#').map_or(line, |(before, _)| before).trim();
+    let line = line
+        .split_once('#')
+        .map_or(line, |(before, _)| before)
+        .trim();
     if line.is_empty() || line.starts_with('[') {
         return None;
     }
@@ -218,7 +237,10 @@ fn inspect_ssh(paths: &AppPaths) -> anyhow::Result<SshInspection> {
         Err(error) => return Err(error.into()),
     };
 
-    let has_medium_include = raw.lines().map(str::trim).any(|line| line == MAIN_INCLUDE_LINE);
+    let has_medium_include = raw
+        .lines()
+        .map(str::trim)
+        .any(|line| line == MAIN_INCLUDE_LINE);
     let has_legacy_include = raw
         .lines()
         .map(str::trim)

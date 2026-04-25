@@ -6,8 +6,8 @@ The archive contains:
 
 - `bin/medium` for the end-user CLI
 - `bin/control-plane` for the Linux server control service
-- `bin/home-node` for the Linux server home-node service
-- `systemd/medium-control-plane.service` and `systemd/medium-home-node.service` template files
+- `bin/node-agent` for the Linux server node-agent service
+- `systemd/medium-control-plane.service` and `systemd/medium-node-agent.service` template files
 - `docs/linux/install-layout.txt` with the expected install paths
 - `homebrew/medium.rb` as the macOS/Homebrew formula template shipped with the release assets
 

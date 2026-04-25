@@ -1,7 +1,7 @@
-use anyhow::{Context, bail};
 use crate::app;
 use crate::state::AppState;
 use crate::state::invite::Invite;
+use anyhow::{Context, bail};
 use overlay_protocol::{DeviceCatalogResponse, SessionOpenGrant, SessionOpenRequest};
 use serde::Deserialize;
 
@@ -25,7 +25,7 @@ pub async fn pair(server_url: &str, device_name: &str) -> anyhow::Result<AppStat
     } else if !payload.code.is_empty() {
         payload.code
     } else if !payload.invite.is_empty() {
-        crate::state::invite::parse_invite(&payload.invite)?.bootstrap_token
+        String::new()
     } else {
         bail!("bootstrap response is missing a token");
     };
@@ -35,6 +35,7 @@ pub async fn pair(server_url: &str, device_name: &str) -> anyhow::Result<AppStat
         device_name: device_name.to_string(),
         bootstrap_code,
         invite_version: 0,
+        control_key: String::new(),
     })
 }
 
@@ -44,8 +45,9 @@ pub async fn join(invite: &Invite) -> anyhow::Result<AppState> {
     Ok(AppState {
         server_url,
         device_name: local_device_name(),
-        bootstrap_code: invite.bootstrap_token.clone(),
+        bootstrap_code: String::new(),
         invite_version: invite.version,
+        control_key: invite.control_key.clone(),
     })
 }
 
@@ -95,13 +97,13 @@ pub async fn open_session(state: &AppState, service_id: &str) -> anyhow::Result<
     Ok(response.json().await?)
 }
 
-pub fn format_join_invite(control_url: &str, bootstrap_token: &str) -> anyhow::Result<String> {
+pub fn format_join_invite(control_url: &str, control_key: &str) -> anyhow::Result<String> {
     let control_url = normalize_control_url(control_url)?;
-    if bootstrap_token.is_empty() {
-        bail!("bootstrap token cannot be empty");
+    if control_key.is_empty() {
+        bail!("control key cannot be empty");
     }
 
     Ok(format!(
-        "medium://join?v=1&control={control_url}&token={bootstrap_token}"
+        "medium://join?v=1&control={control_url}&control_key={control_key}"
     ))
 }

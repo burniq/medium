@@ -4,10 +4,10 @@ use crate::paths::AppPaths;
 use crate::ssh::sync_ssh_config;
 use crate::state::AppState;
 use crate::state::invite;
-#[path = "install.rs"]
-mod install;
 #[path = "doctor.rs"]
 mod doctor;
+#[path = "install.rs"]
+mod install;
 use home_node::agent::prepare_agent_from_path;
 use overlay_protocol::{DeviceRecord, SessionOpenGrant};
 use overlay_transport::session::{SessionHello, write_session_hello};

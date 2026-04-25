@@ -14,20 +14,23 @@ pub async fn create_bootstrap_code(headers: HeaderMap) -> Json<BootstrapInviteRe
 
 fn issue_bootstrap_invite(control_url: &str) -> BootstrapInviteResponse {
     let bootstrap_token = overlay_crypto::issue_bootstrap_code();
-    let invite = format!("medium://join?v=1&control={control_url}&token={bootstrap_token}");
+    let control_key =
+        overlay_crypto::issue_bootstrap_code().replacen("ovr-", "medium-control-key-", 1);
+    let invite = format!("medium://join?v=1&control={control_url}&control_key={control_key}");
 
     BootstrapInviteResponse {
         code: bootstrap_token.clone(),
         invite,
         bootstrap_token,
+        control_key,
         expires_at: None,
     }
 }
 
 fn control_url(headers: &HeaderMap) -> String {
     let scheme = forwarded_scheme(headers);
-    let authority = forwarded_authority(headers)
-        .unwrap_or_else(|| DEFAULT_CONTROL_AUTHORITY.to_string());
+    let authority =
+        forwarded_authority(headers).unwrap_or_else(|| DEFAULT_CONTROL_AUTHORITY.to_string());
 
     format!("{scheme}://{authority}")
 }

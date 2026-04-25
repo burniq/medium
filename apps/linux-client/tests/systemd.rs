@@ -68,7 +68,9 @@ fn write_mock_systemctl(path: &Path) -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn init_control_renders_units_and_enables_services() -> anyhow::Result<()> {
-    let _guard = env_lock().lock().unwrap_or_else(|poison| poison.into_inner());
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
     let temp = tempfile::tempdir()?;
     let systemctl_path = temp.path().join("mock-systemctl.sh");
     let systemctl_log = temp.path().join("systemctl.log");
@@ -77,7 +79,7 @@ async fn init_control_renders_units_and_enables_services() -> anyhow::Result<()>
     let _root = EnvGuard::set_path("MEDIUM_ROOT", temp.path());
     let _public_url = EnvGuard::set_str("OVERLAY_CONTROL_URL", "https://control.example.test");
     let _control_bind = EnvGuard::set_str("MEDIUM_CONTROL_BIND_ADDR", "0.0.0.0:8080");
-    let _node_bind = EnvGuard::set_str("MEDIUM_HOME_NODE_BIND_ADDR", "198.51.100.24:17001");
+    let _node_public = EnvGuard::set_str("MEDIUM_NODE_PUBLIC_ADDR", "198.51.100.24:17001");
     let _systemctl_bin = EnvGuard::set_path("MEDIUM_SYSTEMCTL_BIN", &systemctl_path);
     let _systemctl_log = EnvGuard::set_path("MEDIUM_SYSTEMCTL_LOG", &systemctl_log);
 
@@ -91,7 +93,7 @@ async fn init_control_renders_units_and_enables_services() -> anyhow::Result<()>
         .join("etc/systemd/system/medium-control-plane.service");
     let node_unit_path = temp
         .path()
-        .join("etc/systemd/system/medium-home-node.service");
+        .join("etc/systemd/system/medium-node-agent.service");
 
     assert!(control_unit_path.is_file());
     assert!(node_unit_path.is_file());
@@ -130,12 +132,10 @@ async fn init_control_renders_units_and_enables_services() -> anyhow::Result<()>
     let node_unit = fs::read_to_string(&node_unit_path)?;
     assert!(node_unit.contains(&format!(
         "ExecStart={} --config {}",
-        temp.path().join("usr/bin/home-node").display(),
+        temp.path().join("usr/bin/node-agent").display(),
         temp.path().join("etc/medium/node.toml").display()
     )));
-    assert!(node_unit.contains(
-        "Environment=OVERLAY_CONTROL_URL=https://control.example.test"
-    ));
+    assert!(node_unit.contains("Environment=OVERLAY_CONTROL_URL=https://control.example.test"));
     assert!(node_unit.contains(&format!(
         "Environment=OVERLAY_SHARED_SECRET={shared_secret}"
     )));
@@ -144,7 +144,7 @@ async fn init_control_renders_units_and_enables_services() -> anyhow::Result<()>
 
     let template_root = repo_root().join("packaging/systemd");
     assert!(template_root.join("medium-control-plane.service").is_file());
-    assert!(template_root.join("medium-home-node.service").is_file());
+    assert!(template_root.join("medium-node-agent.service").is_file());
 
     let commands = fs::read_to_string(&systemctl_log)?;
     assert_eq!(
@@ -152,7 +152,7 @@ async fn init_control_renders_units_and_enables_services() -> anyhow::Result<()>
         vec![
             "daemon-reload",
             "enable --now medium-control-plane.service",
-            "enable --now medium-home-node.service",
+            "enable --now medium-node-agent.service",
         ]
     );
 

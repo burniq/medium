@@ -4,11 +4,11 @@ use std::fs;
 #[test]
 fn parses_https_service_definition() {
     let raw = r#"
-node_id = "node-home"
-node_label = "Home"
+node_id = "node-1"
+node_label = "Node"
 
 [[services]]
-id = "svc_home_openclaw"
+id = "svc_openclaw"
 kind = "https"
 label = "OpenClaw"
 target = "127.0.0.1:3000"
@@ -16,8 +16,8 @@ target = "127.0.0.1:3000"
 
     let cfg: NodeConfig = toml::from_str(raw).unwrap();
     assert_eq!(cfg.services.len(), 1);
-    assert_eq!(cfg.node_label.as_deref(), Some("Home"));
-    assert_eq!(cfg.services[0].id, "svc_home_openclaw");
+    assert_eq!(cfg.node_label.as_deref(), Some("Node"));
+    assert_eq!(cfg.services[0].id, "svc_openclaw");
     assert_eq!(cfg.services[0].label.as_deref(), Some("OpenClaw"));
 }
 
@@ -35,11 +35,11 @@ fn loads_node_config_from_file() {
     fs::write(
         &path,
         r#"
-node_id = "node-home"
-node_label = "Home"
+node_id = "node-1"
+node_label = "Node"
 
 [[services]]
-id = "svc_home_openclaw"
+id = "svc_openclaw"
 kind = "https"
 target = "127.0.0.1:3000"
 "#,
@@ -47,6 +47,6 @@ target = "127.0.0.1:3000"
     .unwrap();
 
     let cfg = home_node::config::load_from_path(&path).unwrap();
-    assert_eq!(cfg.node_id, "node-home");
+    assert_eq!(cfg.node_id, "node-1");
     assert_eq!(cfg.services.len(), 1);
 }
