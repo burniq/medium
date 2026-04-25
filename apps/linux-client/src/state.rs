@@ -14,7 +14,9 @@ pub struct AppState {
     #[serde(default)]
     pub invite_version: u32,
     #[serde(default)]
-    pub control_key: String,
+    pub security: String,
+    #[serde(default)]
+    pub control_pin: String,
 }
 
 impl AppState {

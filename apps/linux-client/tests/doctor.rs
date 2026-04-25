@@ -175,7 +175,7 @@ async fn doctor_reports_bootstrapped_files_and_service_statuses() -> anyhow::Res
     )?;
     fs::write(
         root_dir.join("etc/medium/control.toml"),
-        "bind_addr = \"0.0.0.0:8080\"\ndatabase_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\ncontrol_key = \"ctrl_pub_123\"\n",
+        "bind_addr = \"0.0.0.0:8080\"\ndatabase_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\ncontrol_pin = \"ctrl_pub_123\"\n",
     )?;
     fs::write(
         root_dir.join("etc/medium/node.toml"),
@@ -245,7 +245,7 @@ async fn doctor_reads_legacy_state_and_ssh_without_migrating() -> anyhow::Result
     )?;
     fs::write(
         root_dir.join("etc/medium/control.toml"),
-        "bind_addr = \"0.0.0.0:8080\"\ndatabase_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\ncontrol_key = \"ctrl_pub_123\"\n",
+        "bind_addr = \"0.0.0.0:8080\"\ndatabase_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\ncontrol_pin = \"ctrl_pub_123\"\n",
     )?;
     fs::write(
         root_dir.join("etc/medium/node.toml"),
@@ -295,7 +295,7 @@ async fn doctor_reports_structurally_invalid_configs() -> anyhow::Result<()> {
 
     fs::write(
         root_dir.join("etc/medium/control.toml"),
-        "# bind_addr = \"0.0.0.0:8080\"\n# database_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\ncontrol_key = \"ctrl_pub_123\"\n",
+        "# bind_addr = \"0.0.0.0:8080\"\n# database_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\ncontrol_pin = \"ctrl_pub_123\"\n",
     )?;
     fs::write(
         root_dir.join("etc/medium/node.toml"),

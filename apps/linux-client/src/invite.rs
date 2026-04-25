@@ -1,12 +1,14 @@
 use anyhow::{Context, bail};
 
 const SUPPORTED_INVITE_VERSION: u32 = 1;
+const SUPPORTED_INVITE_SECURITY: &str = "pinned-tls";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Invite {
     pub version: u32,
     pub control_url: String,
-    pub control_key: String,
+    pub security: String,
+    pub control_pin: String,
 }
 
 pub fn parse_invite(raw: &str) -> anyhow::Result<Invite> {
@@ -26,7 +28,8 @@ pub fn parse_invite(raw: &str) -> anyhow::Result<Invite> {
 
     let mut version = None;
     let mut control_url = None;
-    let mut control_key = None;
+    let mut security = None;
+    let mut control_pin = None;
 
     for pair in query.split('&') {
         let (key, value) = pair
@@ -47,11 +50,17 @@ pub fn parse_invite(raw: &str) -> anyhow::Result<Invite> {
                 }
                 control_url = Some(value.to_string());
             }
-            "control_key" => {
+            "security" => {
                 if value.is_empty() {
-                    bail!("invite control key cannot be empty");
+                    bail!("invite security cannot be empty");
                 }
-                control_key = Some(value.to_string());
+                security = Some(value.to_string());
+            }
+            "control_pin" => {
+                if value.is_empty() {
+                    bail!("invite control pin cannot be empty");
+                }
+                control_pin = Some(value.to_string());
             }
             _ => {}
         }
@@ -61,10 +70,15 @@ pub fn parse_invite(raw: &str) -> anyhow::Result<Invite> {
     if version != SUPPORTED_INVITE_VERSION {
         bail!("unsupported invite version {version}");
     }
+    let security = security.context("invite is missing security")?;
+    if security != SUPPORTED_INVITE_SECURITY {
+        bail!("unsupported invite security {security}");
+    }
 
     Ok(Invite {
         version,
         control_url: control_url.context("invite is missing control URL")?,
-        control_key: control_key.context("invite is missing control key")?,
+        security,
+        control_pin: control_pin.context("invite is missing control pin")?,
     })
 }

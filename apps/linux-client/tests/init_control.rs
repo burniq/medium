@@ -75,7 +75,7 @@ async fn init_control_creates_expected_paths_and_files() -> anyhow::Result<()> {
     assert!(control_config.contains("control_url = \"https://control.example.test\""));
     assert!(control_config.contains("database_url = \"sqlite://"));
     assert!(control_config.contains("shared_secret = \""));
-    assert!(control_config.contains("control_key = \""));
+    assert!(control_config.contains("control_pin = \""));
     assert!(control_config.contains(&format!(
         "database_url = \"sqlite://{}\"",
         database_path.display()
@@ -100,7 +100,9 @@ async fn init_control_creates_expected_paths_and_files() -> anyhow::Result<()> {
     );
 
     assert!(output.contains("initialized Medium control"));
-    assert!(output.contains("medium://join?v=1&control=https://control.example.test&control_key="));
+    assert!(output.contains(
+        "medium://join?v=1&control=https://control.example.test&security=pinned-tls&control_pin="
+    ));
     assert!(!output.contains("&token="));
     Ok(())
 }
@@ -124,7 +126,9 @@ async fn init_control_allows_domainless_control_url_from_concrete_bind_addr() ->
         .map_err(anyhow::Error::msg)?
         .expect("init-control should return a summary");
 
-    assert!(output.contains("medium://join?v=1&control=http://198.51.100.24:8080&control_key="));
+    assert!(output.contains(
+        "medium://join?v=1&control=http://198.51.100.24:8080&security=pinned-tls&control_pin="
+    ));
     assert!(!output.contains("&token="));
     Ok(())
 }

@@ -103,7 +103,8 @@ fn app_state_saves_under_state_directory() -> anyhow::Result<()> {
         device_name: "node-1".to_string(),
         bootstrap_code: "ABC123".to_string(),
         invite_version: 0,
-        control_key: String::new(),
+        security: String::new(),
+        control_pin: String::new(),
     };
 
     state.save(&paths)?;
@@ -128,7 +129,8 @@ fn app_state_loads_legacy_overlay_state_and_migrates_it() -> anyhow::Result<()> 
         device_name: "legacy-node".to_string(),
         bootstrap_code: "LEGACY123".to_string(),
         invite_version: 0,
-        control_key: String::new(),
+        security: String::new(),
+        control_pin: String::new(),
     };
 
     fs::create_dir_all(legacy_state_path.parent().unwrap())?;

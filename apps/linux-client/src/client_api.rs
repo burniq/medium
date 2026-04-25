@@ -35,7 +35,8 @@ pub async fn pair(server_url: &str, device_name: &str) -> anyhow::Result<AppStat
         device_name: device_name.to_string(),
         bootstrap_code,
         invite_version: 0,
-        control_key: String::new(),
+        security: String::new(),
+        control_pin: String::new(),
     })
 }
 
@@ -47,7 +48,8 @@ pub async fn join(invite: &Invite) -> anyhow::Result<AppState> {
         device_name: local_device_name(),
         bootstrap_code: String::new(),
         invite_version: invite.version,
-        control_key: invite.control_key.clone(),
+        security: invite.security.clone(),
+        control_pin: invite.control_pin.clone(),
     })
 }
 
@@ -97,13 +99,13 @@ pub async fn open_session(state: &AppState, service_id: &str) -> anyhow::Result<
     Ok(response.json().await?)
 }
 
-pub fn format_join_invite(control_url: &str, control_key: &str) -> anyhow::Result<String> {
+pub fn format_join_invite(control_url: &str, control_pin: &str) -> anyhow::Result<String> {
     let control_url = normalize_control_url(control_url)?;
-    if control_key.is_empty() {
-        bail!("control key cannot be empty");
+    if control_pin.is_empty() {
+        bail!("control pin cannot be empty");
     }
 
     Ok(format!(
-        "medium://join?v=1&control={control_url}&control_key={control_key}"
+        "medium://join?v=1&control={control_url}&security=pinned-tls&control_pin={control_pin}"
     ))
 }

@@ -81,7 +81,8 @@ pub struct BootstrapInviteResponse {
     pub code: String,
     pub invite: String,
     pub bootstrap_token: String,
-    pub control_key: String,
+    pub security: String,
+    pub control_pin: String,
     pub expires_at: Option<String>,
 }
 

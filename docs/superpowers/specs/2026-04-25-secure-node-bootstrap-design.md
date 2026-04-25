@@ -23,10 +23,10 @@ Plain HTTP is treated as an untrusted byte pipe. Medium must not send bearer sec
 The trust anchor is pinned from the invite:
 
 ```text
-medium://join?v=1&control=http://192.168.1.10:8080&control_key=<public-key>
+medium://join?v=1&control=http://192.168.1.10:8080&security=pinned-tls&control_pin=<fingerprint>
 ```
 
-The invite may use `http://`, `https://`, an IP address, or a DNS name. The `control_key` is mandatory for secure bootstrap.
+The invite may use an IP address or a DNS name. `security=pinned-tls` and `control_pin` are mandatory for the Xray-style connection profile.
 
 The join flow:
 
@@ -85,7 +85,7 @@ Those are future slices. This slice creates the foundation and removes insecure 
 
 - README and packaging docs no longer describe `home-node` as public terminology.
 - Bootstrap examples do not require a domain.
-- `init-control` can produce an invite with an `http://IP:PORT` control URL plus `control_key`.
-- `join` requires and stores `control_key`.
+- `init-control` can produce an invite with a control URL plus `security=pinned-tls` and `control_pin`.
+- `join` requires and stores `security` and `control_pin`.
 - Tests cover invite parsing, domainless init-control, node address selection, and legacy env fallback.
 - Existing e2e packaging and Rust tests pass.

@@ -59,7 +59,7 @@ medium doctor
 Run this on a client machine:
 
 ```sh
-medium join 'medium://join?v=1&control=http://192.168.1.10:8080&control_key=...'
+medium join 'medium://join?v=1&control=http://192.168.1.10:8080&security=pinned-tls&control_pin=sha256:...'
 medium devices
 medium ssh sync
 ssh node-1

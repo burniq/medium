@@ -78,7 +78,7 @@ fn control_config_line(path: &Path) -> anyhow::Result<String> {
         "database_url",
         "control_url",
         "shared_secret",
-        "control_key",
+        "control_pin",
     ]
     .into_iter()
     .filter(|field| {

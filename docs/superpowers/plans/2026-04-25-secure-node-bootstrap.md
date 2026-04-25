@@ -4,7 +4,7 @@
 
 **Goal:** Remove public `home` terminology, make domainless bootstrap supported, and stop representing HTTP join as bearer-secret-secure.
 
-**Architecture:** Keep the current Rust crate layout for this slice, but change public names, env vars, generated service names, and docs to `node-agent`/`node`. Extend invite parsing/formatting with mandatory `control_key`, generate a control identity during `init-control`, and persist the pinned control key on join.
+**Architecture:** Keep the current Rust crate layout for this slice, but change public names, env vars, generated service names, and docs to `node-agent`/`node`. Extend invite parsing/formatting with mandatory `security=pinned-tls` and `control_pin`, generate a control identity during `init-control`, and persist the pinned control pin on join.
 
 **Tech Stack:** Rust 2024, tokio, axum, sqlx/sqlite, existing `overlay-crypto`, shell packaging scripts, systemd templates.
 
@@ -12,9 +12,9 @@
 
 ## File Map
 
-- `apps/linux-client/src/invite.rs`: parse versioned join invites with `control_key`.
-- `apps/linux-client/src/client_api.rs`: format join invites with `control_key`, store parsed value in client state.
-- `apps/linux-client/src/state.rs`: persist pinned `control_key`.
+- `apps/linux-client/src/invite.rs`: parse versioned join invites with `security=pinned-tls` and `control_pin`.
+- `apps/linux-client/src/client_api.rs`: format join invites with `security=pinned-tls` and `control_pin`, store parsed values in client state.
+- `apps/linux-client/src/state.rs`: persist pinned `control_pin`.
 - `apps/linux-client/src/install.rs`: generate control identity, support `MEDIUM_NODE_LISTEN_ADDR`/`MEDIUM_NODE_PUBLIC_ADDR`, render node-agent service names.
 - `apps/linux-client/src/doctor.rs`: report node-agent service and binary names.
 - `packaging/systemd/*.service`: rename node service template to node-agent terminology.
@@ -31,17 +31,17 @@
 
 - [ ] **Step 1: Add failing invite tests**
 
-Add tests that parse `control_key`, reject missing `control_key`, and reject empty `control_key`.
+Add tests that parse `control_pin`, reject missing `control_pin`, and reject empty `control_pin`.
 
 - [ ] **Step 2: Run failing tests**
 
 Run: `cargo test -p linux-client --test invite`
 
-Expected: tests fail because `JoinInvite` has no `control_key`.
+Expected: tests fail because `JoinInvite` has no `control_pin`.
 
 - [ ] **Step 3: Implement invite/state changes**
 
-Add `control_key: String` to `JoinInvite` and `AppState`, update `format_join_invite(control_url, control_key)` to include `control_key`, and ensure the invite URL does not include a bearer token.
+Add `control_pin: String` to `JoinInvite` and `AppState`, update `format_join_invite(control_url, control_pin)` to include `control_pin`, and ensure the invite URL does not include a bearer token.
 
 - [ ] **Step 4: Run tests**
 
@@ -61,17 +61,17 @@ Add tests for:
 
 - `MEDIUM_CONTROL_BIND_ADDR=198.51.100.24:8080` without `MEDIUM_CONTROL_PUBLIC_URL` succeeds and emits `http://198.51.100.24:8080`.
 - `MEDIUM_CONTROL_BIND_ADDR=0.0.0.0:8080` without public URL fails.
-- generated invite contains `control_key=`.
+- generated invite contains `control_pin=`.
 
 - [ ] **Step 2: Run failing tests**
 
 Run: `cargo test -p linux-client --test init_control`
 
-Expected: FAIL on missing control key/domainless behavior.
+Expected: FAIL on missing control pin/domainless behavior.
 
 - [ ] **Step 3: Implement control identity**
 
-Generate a control identity value during `init-control`, persist it in `/etc/medium/control.toml`, and include its public value in the invite. For this slice, use a high-entropy generated public identifier string as the pinned control key placeholder until the signing handshake lands.
+Generate a control identity value during `init-control`, persist it in `/etc/medium/control.toml`, and include its public value in the invite. For this slice, use a high-entropy generated public identifier string as the pinned control pin placeholder until the signing handshake lands.
 
 - [ ] **Step 4: Run tests**
 
