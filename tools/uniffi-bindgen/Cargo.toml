@@ -1,0 +1,10 @@
+[package]
+name = "uniffi-bindgen"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+camino = "1"
+uniffi_bindgen = "0.29.5"

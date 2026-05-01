@@ -1,0 +1,32 @@
+[package]
+name = "medium-cli"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "medium"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+client-core = { path = "../../crates/client-core" }
+home-node = { path = "../../services/home-node" }
+overlay-crypto = { path = "../../crates/overlay-crypto" }
+overlay-protocol = { path = "../../crates/overlay-protocol" }
+overlay-transport = { path = "../../crates/overlay-transport" }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+tokio-tungstenite = { version = "0.29", features = ["rustls-tls-webpki-roots"] }
+url.workspace = true
+
+[dev-dependencies]
+rcgen.workspace = true
+rustls.workspace = true
+sha2.workspace = true
+tempfile = "3"
+tokio-rustls.workspace = true

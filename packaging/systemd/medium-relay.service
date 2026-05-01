@@ -1,0 +1,16 @@
+[Unit]
+Description=Medium Relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=MEDIUM_RELAY_BIND_ADDR={{RELAY_BIND_ADDR}}
+Environment=MEDIUM_RELAY_SHARED_SECRET={{SHARED_SECRET}}
+{{RELAY_MODE_ENV}}
+ExecStart={{RELAY_BIN}}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

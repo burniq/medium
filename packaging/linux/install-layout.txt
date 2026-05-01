@@ -1,0 +1,30 @@
+Archive contents:
+  bin/medium
+  bin/control-plane
+  bin/node-agent
+  bin/relay
+  systemd/medium-control-plane.service (template asset)
+  systemd/medium-node-agent.service (template asset)
+  systemd/medium-relay.service (template asset)
+  docs/linux/README.md
+  docs/linux/install-layout.txt
+  homebrew/medium.rb
+
+Release asset:
+  medium-<version>-<target>.tar.gz
+
+Linux target install paths:
+  /usr/bin/medium
+  /usr/bin/control-plane
+  /usr/bin/node-agent
+  /usr/bin/relay
+  /etc/medium/control.toml
+  /etc/medium/node.toml
+  /var/lib/medium/control-plane.db
+
+Generated on the target host by `medium init-control`:
+  /etc/systemd/system/medium-control-plane.service
+  /etc/systemd/system/medium-relay.service
+
+Generated on a service node by `medium init-node`:
+  /etc/systemd/system/medium-node-agent.service

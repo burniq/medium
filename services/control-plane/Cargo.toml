@@ -1,0 +1,27 @@
+[package]
+name = "control-plane"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+axum.workspace = true
+chrono.workspace = true
+hyper-util.workspace = true
+overlay-crypto = { path = "../../crates/overlay-crypto" }
+overlay-protocol = { path = "../../crates/overlay-protocol" }
+relay = { path = "../relay" }
+rustls.workspace = true
+rustls-pemfile.workspace = true
+serde.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+tokio-rustls.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tower = { version = "0.5", features = ["util"] }

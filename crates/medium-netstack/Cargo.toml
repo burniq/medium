@@ -1,0 +1,10 @@
+[package]
+name = "medium-netstack"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+smoltcp.workspace = true
+

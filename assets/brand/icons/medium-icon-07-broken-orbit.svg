@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#070809"/>
+  <rect x="104" y="104" width="816" height="816" fill="#15181A" stroke="#383F40" stroke-width="12"/>
+  <path d="M238 514C294 306 478 218 662 282C786 325 844 430 812 552" fill="none" stroke="#383F40" stroke-width="30"/>
+  <path d="M252 620C318 760 454 824 602 786C708 758 786 686 812 584" fill="none" stroke="#383F40" stroke-width="30"/>
+  <path d="M308 628L482 376L688 458L596 706" fill="none" stroke="#B3DB2E" stroke-width="38" stroke-linecap="square" stroke-linejoin="miter"/>
+  <rect x="256" y="576" width="104" height="104" fill="#B3DB2E"/>
+  <rect x="430" y="324" width="104" height="104" fill="#B3DB2E"/>
+  <rect x="636" y="406" width="104" height="104" fill="#B3DB2E"/>
+  <rect x="544" y="654" width="104" height="104" fill="#B3DB2E"/>
+  <rect x="293" y="613" width="30" height="30" fill="#070809"/>
+  <rect x="467" y="361" width="30" height="30" fill="#070809"/>
+  <rect x="673" y="443" width="30" height="30" fill="#070809"/>
+  <rect x="581" y="691" width="30" height="30" fill="#070809"/>
+</svg>

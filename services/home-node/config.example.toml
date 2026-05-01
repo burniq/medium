@@ -1,0 +1,6 @@
+node_id = "node-1"
+
+[[services]]
+id = "svc_openclaw"
+kind = "https"
+target = "127.0.0.1:3000"

@@ -1,0 +1,685 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		02E528130AF16BDA1B0EA888 /* MediumAppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C24ED0FBA9D1745ADA73F85A /* MediumAppModel.swift */; };
+		11A770E32FE8BEE5B76FDA1C /* PinnedHTTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDB5A5A194766F708AAF120 /* PinnedHTTPTransport.swift */; };
+		15EC68376DC43C20C5564CDD /* PlatformDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B6B67CF28E018486F0AA52C /* PlatformDevice.swift */; };
+		320A48F7309B514211C2BD20 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D1CAA3E21BEDF9520E4DFE4F /* Assets.xcassets */; };
+		37F3E9EAC96375FAB819613C /* BootstrapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25A767498FEFD17CB4903747 /* BootstrapView.swift */; };
+		3FC1DBD0805C875A9A9A32A9 /* SecureStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F8E03DED5E317A4CA4FEBE4 /* SecureStoreTests.swift */; };
+		41A2772576F2D4AF9A01F957 /* PinnedHTTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDB5A5A194766F708AAF120 /* PinnedHTTPTransport.swift */; };
+		4310FFE69E7393911448EA89 /* SecureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B02398461198F77A456EC4F /* SecureStore.swift */; };
+		4FFE617B664965EA7277050E /* MediumRouteTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D36545B918F1750AE133EA4 /* MediumRouteTable.swift */; };
+		651175B89A191242F7FA0CCF /* MediumPacketTunnel.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A83E02650ADC16DA836030D /* MediumPacketTunnel.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		67B86A2D522F056AABD25CB6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D1CAA3E21BEDF9520E4DFE4F /* Assets.xcassets */; };
+		6F8FC514DC5CC6139F670263 /* ClientStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F97B8CF14E84992A85D08A8 /* ClientStateStore.swift */; };
+		766D3FFA750A414830B76F8C /* PlatformDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B6B67CF28E018486F0AA52C /* PlatformDevice.swift */; };
+		8E607BAA59CCCF27A956523B /* MediumModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35E852A923D9BD91514BDC3 /* MediumModels.swift */; };
+		93253FAE9D38016E89C72172 /* TunnelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C575E80E4EBAA20B25A878F3 /* TunnelManager.swift */; };
+		980DA36A3771D2EE31B1E7FD /* BootstrapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25A767498FEFD17CB4903747 /* BootstrapView.swift */; };
+		9A7AA9B3AE8B045D3DF8A21F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = CA4F4D761738766B1207F320 /* LaunchScreen.storyboard */; };
+		AA42EEB4085875C92D52C669 /* MediumRouteTableTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06109ABF56FB68AB1F731048 /* MediumRouteTableTests.swift */; };
+		AFDBD41B8A98C5683328B86C /* SecureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B02398461198F77A456EC4F /* SecureStore.swift */; };
+		B095981CACAA2F1C8EC86177 /* InviteParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E124F21733B7F7ABC19BEE6D /* InviteParserTests.swift */; };
+		C2E2099EEDCAA7982E4715D0 /* ClientStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F97B8CF14E84992A85D08A8 /* ClientStateStore.swift */; };
+		C853063A0B283A5D46F6B2E2 /* MediumAppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C24ED0FBA9D1745ADA73F85A /* MediumAppModel.swift */; };
+		CEDCED310723855913E7F1DE /* MediumApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9078C3025963E3B3DFEC17B /* MediumApp.swift */; };
+		D0FB06FE767CCA77AEB16590 /* MediumRouteTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D36545B918F1750AE133EA4 /* MediumRouteTable.swift */; };
+		D23F1D1ABD1E1C059ABE7F1C /* TunnelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C575E80E4EBAA20B25A878F3 /* TunnelManager.swift */; };
+		D6C9D215FE53945D9021DB18 /* ClientStateStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EC0F23FB02B7B6137CEADD3 /* ClientStateStoreTests.swift */; };
+		D93149A09744B448F926EFAD /* MediumApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9078C3025963E3B3DFEC17B /* MediumApp.swift */; };
+		DD21A1916E4103318BABC478 /* MediumAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86EA91AECF7A519230D37A47 /* MediumAPIClient.swift */; };
+		DE5D5CA8CA163FA9E34BB194 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C48343396092DFC49F93689 /* PacketTunnelProvider.swift */; };
+		E6116BFF6C32E85DB4369B5E /* MediumAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86EA91AECF7A519230D37A47 /* MediumAPIClient.swift */; };
+		E9E7FF90A8928C01100FC1C6 /* MediumAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C5487738F7D404E42325377 /* MediumAPITests.swift */; };
+		EB12E9BD8ED280E5D060A74B /* MediumModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35E852A923D9BD91514BDC3 /* MediumModels.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		96B6B0C0B2A5F14B5C78D5D4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 33BD2AA55CAB29E1A6425B62 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A227D2EF6D8E0ECA13CD74DB;
+			remoteInfo = MediumPacketTunnel;
+		};
+		B9DBC7F749E3540BFAF02D85 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 33BD2AA55CAB29E1A6425B62 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F0715A3CDA8BF325B0A0BDED;
+			remoteInfo = MediumMac;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7B5F923E3A2E2B0624755446 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				651175B89A191242F7FA0CCF /* MediumPacketTunnel.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		06109ABF56FB68AB1F731048 /* MediumRouteTableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumRouteTableTests.swift; sourceTree = "<group>"; };
+		25A767498FEFD17CB4903747 /* BootstrapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BootstrapView.swift; sourceTree = "<group>"; };
+		2CC7253F25BE16AA6E228391 /* MediumApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MediumApp.entitlements; sourceTree = "<group>"; };
+		3A88E26AB6878C560AD99201 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		3B6B67CF28E018486F0AA52C /* PlatformDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformDevice.swift; sourceTree = "<group>"; };
+		3EC0F23FB02B7B6137CEADD3 /* ClientStateStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientStateStoreTests.swift; sourceTree = "<group>"; };
+		49F55A09EDB8240D03679F9B /* Medium.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Medium.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4A83E02650ADC16DA836030D /* MediumPacketTunnel.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = MediumPacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C48343396092DFC49F93689 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
+		4C5487738F7D404E42325377 /* MediumAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumAPITests.swift; sourceTree = "<group>"; };
+		6B02398461198F77A456EC4F /* SecureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStore.swift; sourceTree = "<group>"; };
+		6F97B8CF14E84992A85D08A8 /* ClientStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientStateStore.swift; sourceTree = "<group>"; };
+		7F8E03DED5E317A4CA4FEBE4 /* SecureStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStoreTests.swift; sourceTree = "<group>"; };
+		86EA91AECF7A519230D37A47 /* MediumAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumAPIClient.swift; sourceTree = "<group>"; };
+		9D36545B918F1750AE133EA4 /* MediumRouteTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumRouteTable.swift; sourceTree = "<group>"; };
+		AB4DEF6AA3E343B1EB4488FD /* MediumAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MediumAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B35E852A923D9BD91514BDC3 /* MediumModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumModels.swift; sourceTree = "<group>"; };
+		B9078C3025963E3B3DFEC17B /* MediumApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumApp.swift; sourceTree = "<group>"; };
+		C24ED0FBA9D1745ADA73F85A /* MediumAppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumAppModel.swift; sourceTree = "<group>"; };
+		C575E80E4EBAA20B25A878F3 /* TunnelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelManager.swift; sourceTree = "<group>"; };
+		C7C91602484F6347AD749CB5 /* MediumPacketTunnel.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MediumPacketTunnel.entitlements; sourceTree = "<group>"; };
+		CA4F4D761738766B1207F320 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		D1CAA3E21BEDF9520E4DFE4F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		E124F21733B7F7ABC19BEE6D /* InviteParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteParserTests.swift; sourceTree = "<group>"; };
+		FD5862EE87F9473E308DD128 /* MediumMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = MediumMac.app; path = Medium.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FEDB5A5A194766F708AAF120 /* PinnedHTTPTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedHTTPTransport.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		008A53EFA22FCE605054D68C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				49F55A09EDB8240D03679F9B /* Medium.app */,
+				AB4DEF6AA3E343B1EB4488FD /* MediumAppTests.xctest */,
+				FD5862EE87F9473E308DD128 /* MediumMac.app */,
+				4A83E02650ADC16DA836030D /* MediumPacketTunnel.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		748BC410BA62C53A82FD17B9 = {
+			isa = PBXGroup;
+			children = (
+				A4A8B35D6C272B302F42A494 /* MediumApp */,
+				9BE12F9B3C88A3C8A88DBD8A /* MediumAppTests */,
+				C3C2122558D357CA4CE66CE7 /* PacketTunnel */,
+				008A53EFA22FCE605054D68C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		9BE12F9B3C88A3C8A88DBD8A /* MediumAppTests */ = {
+			isa = PBXGroup;
+			children = (
+				3EC0F23FB02B7B6137CEADD3 /* ClientStateStoreTests.swift */,
+				E124F21733B7F7ABC19BEE6D /* InviteParserTests.swift */,
+				4C5487738F7D404E42325377 /* MediumAPITests.swift */,
+				06109ABF56FB68AB1F731048 /* MediumRouteTableTests.swift */,
+				7F8E03DED5E317A4CA4FEBE4 /* SecureStoreTests.swift */,
+			);
+			path = MediumAppTests;
+			sourceTree = "<group>";
+		};
+		A4A8B35D6C272B302F42A494 /* MediumApp */ = {
+			isa = PBXGroup;
+			children = (
+				D1CAA3E21BEDF9520E4DFE4F /* Assets.xcassets */,
+				25A767498FEFD17CB4903747 /* BootstrapView.swift */,
+				6F97B8CF14E84992A85D08A8 /* ClientStateStore.swift */,
+				CA4F4D761738766B1207F320 /* LaunchScreen.storyboard */,
+				86EA91AECF7A519230D37A47 /* MediumAPIClient.swift */,
+				2CC7253F25BE16AA6E228391 /* MediumApp.entitlements */,
+				B9078C3025963E3B3DFEC17B /* MediumApp.swift */,
+				C24ED0FBA9D1745ADA73F85A /* MediumAppModel.swift */,
+				B35E852A923D9BD91514BDC3 /* MediumModels.swift */,
+				FEDB5A5A194766F708AAF120 /* PinnedHTTPTransport.swift */,
+				3B6B67CF28E018486F0AA52C /* PlatformDevice.swift */,
+				6B02398461198F77A456EC4F /* SecureStore.swift */,
+				C575E80E4EBAA20B25A878F3 /* TunnelManager.swift */,
+			);
+			path = MediumApp;
+			sourceTree = "<group>";
+		};
+		C3C2122558D357CA4CE66CE7 /* PacketTunnel */ = {
+			isa = PBXGroup;
+			children = (
+				3A88E26AB6878C560AD99201 /* Info.plist */,
+				C7C91602484F6347AD749CB5 /* MediumPacketTunnel.entitlements */,
+				9D36545B918F1750AE133EA4 /* MediumRouteTable.swift */,
+				4C48343396092DFC49F93689 /* PacketTunnelProvider.swift */,
+			);
+			path = PacketTunnel;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A227D2EF6D8E0ECA13CD74DB /* MediumPacketTunnel */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2C2CAF954CB0894A591DEC54 /* Build configuration list for PBXNativeTarget "MediumPacketTunnel" */;
+			buildPhases = (
+				E399BB3713DB1595CE25B50B /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MediumPacketTunnel;
+			packageProductDependencies = (
+			);
+			productName = MediumPacketTunnel;
+			productReference = 4A83E02650ADC16DA836030D /* MediumPacketTunnel.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		A52A8C81A142D5BC983F6583 /* MediumApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 51D73910CCBEBD841EF20D3F /* Build configuration list for PBXNativeTarget "MediumApp" */;
+			buildPhases = (
+				8AE68419EC84F43A82E02FC3 /* Sources */,
+				DB58DB44C13FA5A0F7FC6A62 /* Resources */,
+				7B5F923E3A2E2B0624755446 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1DB00A661DD401B0DA98EA71 /* PBXTargetDependency */,
+			);
+			name = MediumApp;
+			packageProductDependencies = (
+			);
+			productName = MediumApp;
+			productReference = 49F55A09EDB8240D03679F9B /* Medium.app */;
+			productType = "com.apple.product-type.application";
+		};
+		DB72AC711696A6F24AD3E79F /* MediumAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 44EF944AEAED766EB5B40E23 /* Build configuration list for PBXNativeTarget "MediumAppTests" */;
+			buildPhases = (
+				5B73E42C61B07CF1FE7A18E9 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7AE5C41DC5C5DEA7139F31C5 /* PBXTargetDependency */,
+			);
+			name = MediumAppTests;
+			packageProductDependencies = (
+			);
+			productName = MediumAppTests;
+			productReference = AB4DEF6AA3E343B1EB4488FD /* MediumAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		F0715A3CDA8BF325B0A0BDED /* MediumMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B8081750E9804797C7D4D581 /* Build configuration list for PBXNativeTarget "MediumMac" */;
+			buildPhases = (
+				ECBF2C18787BCFF00FB71108 /* Sources */,
+				0C396810F573AAF16A7233EA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MediumMac;
+			packageProductDependencies = (
+			);
+			productName = MediumMac;
+			productReference = FD5862EE87F9473E308DD128 /* MediumMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		33BD2AA55CAB29E1A6425B62 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+			};
+			buildConfigurationList = 26DDA1B8C16C38BED8339E05 /* Build configuration list for PBXProject "MediumApple" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 748BC410BA62C53A82FD17B9;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 008A53EFA22FCE605054D68C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A52A8C81A142D5BC983F6583 /* MediumApp */,
+				DB72AC711696A6F24AD3E79F /* MediumAppTests */,
+				F0715A3CDA8BF325B0A0BDED /* MediumMac */,
+				A227D2EF6D8E0ECA13CD74DB /* MediumPacketTunnel */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0C396810F573AAF16A7233EA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				320A48F7309B514211C2BD20 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DB58DB44C13FA5A0F7FC6A62 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				67B86A2D522F056AABD25CB6 /* Assets.xcassets in Resources */,
+				9A7AA9B3AE8B045D3DF8A21F /* LaunchScreen.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5B73E42C61B07CF1FE7A18E9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D6C9D215FE53945D9021DB18 /* ClientStateStoreTests.swift in Sources */,
+				B095981CACAA2F1C8EC86177 /* InviteParserTests.swift in Sources */,
+				E9E7FF90A8928C01100FC1C6 /* MediumAPITests.swift in Sources */,
+				AA42EEB4085875C92D52C669 /* MediumRouteTableTests.swift in Sources */,
+				3FC1DBD0805C875A9A9A32A9 /* SecureStoreTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8AE68419EC84F43A82E02FC3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				37F3E9EAC96375FAB819613C /* BootstrapView.swift in Sources */,
+				C2E2099EEDCAA7982E4715D0 /* ClientStateStore.swift in Sources */,
+				DD21A1916E4103318BABC478 /* MediumAPIClient.swift in Sources */,
+				D93149A09744B448F926EFAD /* MediumApp.swift in Sources */,
+				C853063A0B283A5D46F6B2E2 /* MediumAppModel.swift in Sources */,
+				8E607BAA59CCCF27A956523B /* MediumModels.swift in Sources */,
+				41A2772576F2D4AF9A01F957 /* PinnedHTTPTransport.swift in Sources */,
+				766D3FFA750A414830B76F8C /* PlatformDevice.swift in Sources */,
+				4310FFE69E7393911448EA89 /* SecureStore.swift in Sources */,
+				D23F1D1ABD1E1C059ABE7F1C /* TunnelManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E399BB3713DB1595CE25B50B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D0FB06FE767CCA77AEB16590 /* MediumRouteTable.swift in Sources */,
+				DE5D5CA8CA163FA9E34BB194 /* PacketTunnelProvider.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ECBF2C18787BCFF00FB71108 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				980DA36A3771D2EE31B1E7FD /* BootstrapView.swift in Sources */,
+				6F8FC514DC5CC6139F670263 /* ClientStateStore.swift in Sources */,
+				E6116BFF6C32E85DB4369B5E /* MediumAPIClient.swift in Sources */,
+				CEDCED310723855913E7F1DE /* MediumApp.swift in Sources */,
+				02E528130AF16BDA1B0EA888 /* MediumAppModel.swift in Sources */,
+				EB12E9BD8ED280E5D060A74B /* MediumModels.swift in Sources */,
+				4FFE617B664965EA7277050E /* MediumRouteTable.swift in Sources */,
+				11A770E32FE8BEE5B76FDA1C /* PinnedHTTPTransport.swift in Sources */,
+				15EC68376DC43C20C5564CDD /* PlatformDevice.swift in Sources */,
+				AFDBD41B8A98C5683328B86C /* SecureStore.swift in Sources */,
+				93253FAE9D38016E89C72172 /* TunnelManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1DB00A661DD401B0DA98EA71 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A227D2EF6D8E0ECA13CD74DB /* MediumPacketTunnel */;
+			targetProxy = 96B6B0C0B2A5F14B5C78D5D4 /* PBXContainerItemProxy */;
+		};
+		7AE5C41DC5C5DEA7139F31C5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F0715A3CDA8BF325B0A0BDED /* MediumMac */;
+			targetProxy = B9DBC7F749E3540BFAF02D85 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		090F7FDDC096E466A0278BDE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Medium;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.burniq.medium.macos;
+				PRODUCT_NAME = Medium;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		1C7F230FD972C6DDC2EE9E3B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = MediumApp/MediumApp.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = M72YP4988A;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Medium;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.burniq.medium.ios;
+				PRODUCT_NAME = Medium;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		508FA257D6257BCF73A88F7B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.burniq.medium.macos.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Medium.app/Contents/MacOS/Medium";
+			};
+			name = Release;
+		};
+		5AE1EE0D7F3F563183D608AE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.burniq.medium.macos.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Medium.app/Contents/MacOS/Medium";
+			};
+			name = Debug;
+		};
+		5EBBA39AF4B1C5F30EBD935F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = MediumApp/MediumApp.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = M72YP4988A;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Medium;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.burniq.medium.ios;
+				PRODUCT_NAME = Medium;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		65ED258C0D2C8EEEACBA0399 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Medium;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.burniq.medium.macos;
+				PRODUCT_NAME = Medium;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		8F26948D846452F385320FEF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PacketTunnel/MediumPacketTunnel.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PacketTunnel/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.burniq.medium.ios.PacketTunnel;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		90893C3629F2B5660DD60A23 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PacketTunnel/MediumPacketTunnel.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PacketTunnel/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.burniq.medium.ios.PacketTunnel;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		9CF24B4EBC10656C0440DE94 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MARKETING_VERSION = 0.0.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		D4F967B7CE0E1CAA3E951738 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MARKETING_VERSION = 0.0.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		26DDA1B8C16C38BED8339E05 /* Build configuration list for PBXProject "MediumApple" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D4F967B7CE0E1CAA3E951738 /* Debug */,
+				9CF24B4EBC10656C0440DE94 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		2C2CAF954CB0894A591DEC54 /* Build configuration list for PBXNativeTarget "MediumPacketTunnel" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F26948D846452F385320FEF /* Debug */,
+				90893C3629F2B5660DD60A23 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		44EF944AEAED766EB5B40E23 /* Build configuration list for PBXNativeTarget "MediumAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5AE1EE0D7F3F563183D608AE /* Debug */,
+				508FA257D6257BCF73A88F7B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		51D73910CCBEBD841EF20D3F /* Build configuration list for PBXNativeTarget "MediumApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5EBBA39AF4B1C5F30EBD935F /* Debug */,
+				1C7F230FD972C6DDC2EE9E3B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B8081750E9804797C7D4D581 /* Build configuration list for PBXNativeTarget "MediumMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				090F7FDDC096E466A0278BDE /* Debug */,
+				65ED258C0D2C8EEEACBA0399 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 33BD2AA55CAB29E1A6425B62 /* Project object */;
+}

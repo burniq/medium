@@ -1,0 +1,75 @@
+name: MediumApple
+options:
+  minimumXcodeGenVersion: 2.40.0
+settings:
+  base:
+    MARKETING_VERSION: 0.0.1
+    CURRENT_PROJECT_VERSION: 1
+schemes:
+  MediumMac:
+    build:
+      targets:
+        MediumMac: all
+        MediumAppTests: [test]
+    test:
+      targets:
+        - MediumAppTests
+targets:
+  MediumApp:
+    type: application
+    platform: iOS
+    sources: [MediumApp]
+    dependencies:
+      - target: MediumPacketTunnel
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: io.burniq.medium.ios
+        PRODUCT_NAME: Medium
+        INFOPLIST_KEY_CFBundleDisplayName: Medium
+        INFOPLIST_KEY_UILaunchStoryboardName: LaunchScreen
+        INFOPLIST_KEY_UIRequiresFullScreen: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: MediumApp/MediumApp.entitlements
+  MediumPacketTunnel:
+    type: app-extension
+    platform: iOS
+    sources: [PacketTunnel]
+    info:
+      path: PacketTunnel/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.networkextension.packet-tunnel
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PacketTunnelProvider
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: io.burniq.medium.ios.PacketTunnel
+        CODE_SIGN_ENTITLEMENTS: PacketTunnel/MediumPacketTunnel.entitlements
+  MediumMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: MediumApp
+        excludes:
+          - LaunchScreen.storyboard
+      - PacketTunnel/MediumRouteTable.swift
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: io.burniq.medium.macos
+        PRODUCT_NAME: Medium
+        INFOPLIST_KEY_CFBundleDisplayName: Medium
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  MediumAppTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [MediumAppTests]
+    dependencies:
+      - target: MediumMac
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: io.burniq.medium.macos.tests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Medium.app/Contents/MacOS/Medium
+        BUNDLE_LOADER: $(TEST_HOST)

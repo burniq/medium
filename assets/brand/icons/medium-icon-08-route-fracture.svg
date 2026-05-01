@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#070809"/>
+  <rect x="104" y="104" width="816" height="816" fill="#15181A" stroke="#383F40" stroke-width="12"/>
+  <path d="M252 300H466V454H640V352H774" fill="none" stroke="#383F40" stroke-width="34" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M318 724H504V586H706" fill="none" stroke="#383F40" stroke-width="34" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M466 454L504 586" stroke="#B3DB2E" stroke-width="44" stroke-linecap="square"/>
+  <path d="M252 300H466M640 352H774M318 724H504M504 586H706" stroke="#B3DB2E" stroke-width="26" stroke-linecap="square"/>
+  <rect x="210" y="258" width="84" height="84" fill="#B3DB2E"/>
+  <rect x="424" y="412" width="84" height="84" fill="#B3DB2E"/>
+  <rect x="598" y="310" width="84" height="84" fill="#B3DB2E"/>
+  <rect x="732" y="310" width="84" height="84" fill="#B3DB2E"/>
+  <rect x="276" y="682" width="84" height="84" fill="#B3DB2E"/>
+  <rect x="462" y="544" width="84" height="84" fill="#B3DB2E"/>
+  <rect x="664" y="544" width="84" height="84" fill="#B3DB2E"/>
+</svg>

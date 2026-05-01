@@ -1,0 +1,19 @@
+/target
+/.idea
+**/.DS_Store
+/.gradle
+/apps/android/.gradle
+/apps/android/.idea
+/apps/android/build
+/apps/android/app/build
+/apps/android/app/src/main/jniLibs
+/apps/android/local.properties
+/apps/apple/**/*.xcuserdata
+/apps/apple/**/xcuserdata/
+/apps/apple/**/*.xcuserdatad/
+/apps/apple/build
+/apps/medium-cli/target
+/DerivedData
+
+# Local LLM/agent working notes.
+/docs/superpowers/

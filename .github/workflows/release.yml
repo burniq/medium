@@ -1,0 +1,108 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Package ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x86_64
+            runner: ubuntu-24.04
+          - target: linux-aarch64
+            runner: ubuntu-24.04-arm
+          - target: darwin-arm64
+            runner: macos-15
+          - target: darwin-x86_64
+            runner: macos-15-intel
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Derive version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="0.0.1-dev.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Package archive
+        shell: bash
+        run: |
+          MEDIUM_VERSION="${{ steps.version.outputs.version }}" \
+          MEDIUM_TARGET="${{ matrix.target }}" \
+          bash scripts/package.sh "dist/package-${{ matrix.target }}" dist
+
+      - name: Verify archive
+        shell: bash
+        run: |
+          asset="dist/medium-${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz"
+          test -f "$asset"
+          tar -tzf "$asset" > archive-contents.txt
+          grep -Fqx "bin/medium" archive-contents.txt
+          grep -Fqx "bin/control-plane" archive-contents.txt
+          grep -Fqx "bin/node-agent" archive-contents.txt
+          grep -Fqx "bin/relay" archive-contents.txt
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: medium-${{ steps.version.outputs.version }}-${{ matrix.target }}
+          path: dist/medium-${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    if: github.ref_type == 'tag'
+    needs: package
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: dist
+          pattern: medium-*
+          merge-multiple: true
+
+      - name: Verify release assets
+        shell: bash
+        run: |
+          count="$(find dist -maxdepth 1 -name 'medium-*.tar.gz' | wc -l | tr -d ' ')"
+          test "$count" = "4"
+          for target in linux-x86_64 linux-aarch64 darwin-arm64 darwin-x86_64; do
+            test -f "dist/medium-${GITHUB_REF_NAME#v}-$target.tar.gz"
+          done
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*.tar.gz
+          fail_on_unmatched_files: true
+          overwrite_files: true
