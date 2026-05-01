@@ -16,7 +16,7 @@ The archive contains:
 The release tarball is written as:
 
 ```text
-medium-${MEDIUM_VERSION:-0.0.1}-${MEDIUM_TARGET:-<detected-target>}.tar.gz
+medium-${MEDIUM_VERSION:-0.0.2}-${MEDIUM_TARGET:-<detected-target>}.tar.gz
 ```
 
 `scripts/install.sh` installs from this tarball by default and does not require

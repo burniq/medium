@@ -3,7 +3,7 @@ options:
   minimumXcodeGenVersion: 2.40.0
 settings:
   base:
-    MARKETING_VERSION: 0.0.1
+    MARKETING_VERSION: 0.0.2
     CURRENT_PROJECT_VERSION: 1
 schemes:
   MediumMac:

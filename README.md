@@ -28,7 +28,7 @@ For a fork or private repo:
 curl -fsSL https://raw.githubusercontent.com/burniq/medium/main/scripts/install.sh | MEDIUM_REPO=burniq/medium sh
 ```
 
-The installer downloads `medium-${MEDIUM_VERSION:-0.0.1}-${target}.tar.gz` from
+The installer downloads `medium-${MEDIUM_VERSION:-0.0.2}-${target}.tar.gz` from
 GitHub Releases. If `medium` is already in `PATH`, the installer updates that
 existing location. Otherwise it installs into `/usr/bin` on Linux and
 `/usr/local/bin` on macOS by default:
@@ -42,7 +42,7 @@ Use a specific release or target when needed:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/burniq/medium/main/scripts/install.sh | \
-  MEDIUM_VERSION=0.0.1 MEDIUM_TARGET=linux-x86_64 sh
+  MEDIUM_VERSION=0.0.2 MEDIUM_TARGET=linux-x86_64 sh
 ```
 
 Use a different install prefix if needed:
@@ -58,7 +58,7 @@ curl -fsSL https://raw.githubusercontent.com/burniq/medium/main/scripts/install.
 ```
 
 Release archives are published automatically by GitHub Actions when a tag like
-`v0.0.1` is pushed. The release workflow uploads:
+`v0.0.2` is pushed. The release workflow uploads:
 
 - `medium-<version>-linux-x86_64.tar.gz`
 - `medium-<version>-linux-aarch64.tar.gz`

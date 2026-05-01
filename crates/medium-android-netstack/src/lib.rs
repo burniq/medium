@@ -35,6 +35,7 @@ use url::Url;
 
 static LOGGER: Once = Once::new();
 const CANDIDATE_CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
+const IDLE_BACKENDS_PER_SERVICE: usize = 1;
 
 #[derive(Debug)]
 struct Runner {
@@ -188,6 +189,7 @@ fn run_tun_loop(
     set_nonblocking(tun.as_raw_fd())?;
     let mut stack = MediumStack::new(network)?;
     let mut backends = StreamBackends::new(routes, protector);
+    backends.warm_up();
     let mut packet = vec![0_u8; 2048];
     let mut now_millis = 0_i64;
 
@@ -221,7 +223,10 @@ fn run_tun_loop(
 struct StreamBackends {
     routes: HashMap<String, BackendRoute>,
     streams: HashMap<String, ActiveBackend>,
+    stream_services: HashMap<String, String>,
+    idle_backends: IdlePool<ActiveBackend>,
     pending_writes: HashMap<String, VecDeque<u8>>,
+    selected_ice_paths: HashMap<String, IceCandidate>,
     protector: Option<SocketProtector>,
 }
 
@@ -230,8 +235,26 @@ impl StreamBackends {
         Self {
             routes,
             streams: HashMap::new(),
+            stream_services: HashMap::new(),
+            idle_backends: IdlePool::new(IDLE_BACKENDS_PER_SERVICE),
             pending_writes: HashMap::new(),
+            selected_ice_paths: HashMap::new(),
             protector,
+        }
+    }
+
+    fn warm_up(&mut self) {
+        let service_ids = self
+            .routes
+            .iter()
+            .filter_map(|(service_id, route)| match route {
+                BackendRoute::SessionGrant { .. } => Some(service_id.clone()),
+                BackendRoute::DirectTarget(_) => None,
+            })
+            .collect::<Vec<_>>();
+
+        for service_id in service_ids {
+            self.ensure_idle_backend(&service_id);
         }
     }
 
@@ -268,15 +291,16 @@ impl StreamBackends {
         stream_id: &str,
         service_id: &str,
     ) -> anyhow::Result<()> {
-        let Some(route) = self.routes.get(service_id) else {
+        let Some(route) = self.routes.get(service_id).cloned() else {
             stack.close_tcp(stream_id)?;
             return Ok(());
         };
 
-        match connect_backend(route, self.protector.as_ref()) {
-            Ok(mut stream) => {
-                stream.configure_nonblocking()?;
+        match self.take_or_connect_backend(service_id, &route) {
+            Ok(stream) => {
                 self.streams.insert(stream_id.to_string(), stream);
+                self.stream_services
+                    .insert(stream_id.to_string(), service_id.to_string());
             }
             Err(error) => {
                 error!("failed to connect backend service {service_id}: {error:#}");
@@ -299,6 +323,64 @@ impl StreamBackends {
             }
         }
         Ok(())
+    }
+
+    fn take_or_connect_backend(
+        &mut self,
+        service_id: &str,
+        route: &BackendRoute,
+    ) -> anyhow::Result<ActiveBackend> {
+        if let Some(stream) = self.idle_backends.pop(service_id) {
+            debug!("using warmed backend for service {service_id}");
+            return Ok(stream);
+        }
+
+        let mut outcome = connect_backend(
+            route,
+            self.protector.as_ref(),
+            self.selected_ice_paths.get(service_id),
+        )?;
+        outcome.backend.configure_nonblocking()?;
+        if let Some(candidate) = outcome.selected_ice_path {
+            self.selected_ice_paths
+                .insert(service_id.to_string(), candidate);
+        }
+        Ok(outcome.backend)
+    }
+
+    fn ensure_idle_backend(&mut self, service_id: &str) {
+        if self.idle_backends.len(service_id) >= IDLE_BACKENDS_PER_SERVICE {
+            return;
+        }
+        let Some(route) = self.routes.get(service_id).cloned() else {
+            return;
+        };
+        let BackendRoute::SessionGrant { .. } = &route else {
+            return;
+        };
+
+        match connect_backend(
+            &route,
+            self.protector.as_ref(),
+            self.selected_ice_paths.get(service_id),
+        ) {
+            Ok(mut outcome) => {
+                if let Err(error) = outcome.backend.configure_nonblocking() {
+                    error!("failed to configure warmed backend service {service_id}: {error:#}");
+                    return;
+                }
+                if let Some(candidate) = outcome.selected_ice_path {
+                    self.selected_ice_paths
+                        .insert(service_id.to_string(), candidate);
+                }
+                if self.idle_backends.push(service_id, outcome.backend).is_ok() {
+                    info!("warmed backend for service {service_id}");
+                }
+            }
+            Err(error) => {
+                error!("failed to warm backend for service {service_id}: {error:#}");
+            }
+        }
     }
 
     fn queue_backend_write(&mut self, stream_id: &str, bytes: &[u8]) -> anyhow::Result<()> {
@@ -384,6 +466,48 @@ impl StreamBackends {
     fn remove_stream(&mut self, stream_id: &str) {
         self.streams.remove(stream_id);
         self.pending_writes.remove(stream_id);
+        if let Some(service_id) = self.stream_services.remove(stream_id) {
+            self.ensure_idle_backend(&service_id);
+        }
+    }
+}
+
+struct IdlePool<T> {
+    max_per_service: usize,
+    backends: HashMap<String, VecDeque<T>>,
+}
+
+impl<T> IdlePool<T> {
+    fn new(max_per_service: usize) -> Self {
+        Self {
+            max_per_service,
+            backends: HashMap::new(),
+        }
+    }
+
+    fn push(&mut self, service_id: &str, backend: T) -> Result<(), T> {
+        let entries = self.backends.entry(service_id.to_string()).or_default();
+        if entries.len() >= self.max_per_service {
+            return Err(backend);
+        }
+        entries.push_back(backend);
+        Ok(())
+    }
+
+    fn pop(&mut self, service_id: &str) -> Option<T> {
+        let entries = self.backends.get_mut(service_id)?;
+        let backend = entries.pop_front();
+        if entries.is_empty() {
+            self.backends.remove(service_id);
+        }
+        backend
+    }
+
+    fn len(&self, service_id: &str) -> usize {
+        self.backends
+            .get(service_id)
+            .map(VecDeque::len)
+            .unwrap_or_default()
     }
 }
 
@@ -521,16 +645,23 @@ impl Write for ActiveBackend {
     }
 }
 
+struct BackendConnectOutcome {
+    backend: ActiveBackend,
+    selected_ice_path: Option<IceCandidate>,
+}
+
 fn connect_backend(
     route: &BackendRoute,
     protector: Option<&SocketProtector>,
-) -> anyhow::Result<ActiveBackend> {
+    preferred_ice_path: Option<&IceCandidate>,
+) -> anyhow::Result<BackendConnectOutcome> {
     match route {
-        BackendRoute::DirectTarget(target) => Ok(ActiveBackend::Tcp(connect_protected_tcp(
-            target, protector,
-        )?)),
+        BackendRoute::DirectTarget(target) => Ok(BackendConnectOutcome {
+            backend: ActiveBackend::Tcp(connect_protected_tcp(target, protector)?),
+            selected_ice_path: None,
+        }),
         BackendRoute::SessionGrant { grant, control_pin } => {
-            connect_session_grant(grant, control_pin.as_deref(), protector)
+            connect_session_grant(grant, control_pin.as_deref(), protector, preferred_ice_path)
         }
     }
 }
@@ -539,9 +670,15 @@ fn connect_session_grant(
     grant: &SessionOpenGrant,
     control_pin: Option<&str>,
     protector: Option<&SocketProtector>,
-) -> anyhow::Result<ActiveBackend> {
-    if let Some(stream) = try_connect_ice_udp(grant, protector)? {
-        return Ok(ActiveBackend::Udp(Box::new(stream)));
+    preferred_ice_path: Option<&IceCandidate>,
+) -> anyhow::Result<BackendConnectOutcome> {
+    if let Some((stream, selected_ice_path)) =
+        try_connect_ice_udp(grant, protector, preferred_ice_path)?
+    {
+        return Ok(BackendConnectOutcome {
+            backend: ActiveBackend::Udp(Box::new(stream)),
+            selected_ice_path: Some(selected_ice_path),
+        });
     }
 
     let mut candidates = grant.authorization.candidates.clone();
@@ -574,7 +711,10 @@ fn connect_session_grant(
                     candidate.kind.as_str(),
                     candidate.addr
                 );
-                return Ok(stream);
+                return Ok(BackendConnectOutcome {
+                    backend: stream,
+                    selected_ice_path: None,
+                });
             }
             Err(error) => {
                 error!(
@@ -594,7 +734,8 @@ fn connect_session_grant(
 fn try_connect_ice_udp(
     grant: &SessionOpenGrant,
     protector: Option<&SocketProtector>,
-) -> anyhow::Result<Option<UdpSessionStream>> {
+    preferred_ice_path: Option<&IceCandidate>,
+) -> anyhow::Result<Option<(UdpSessionStream, IceCandidate)>> {
     let Some(ice) = &grant.authorization.ice else {
         info!(
             "{}",
@@ -638,7 +779,7 @@ fn try_connect_ice_udp(
     );
     let mut last_error = None;
 
-    for candidate in ice_checklist(grant) {
+    for candidate in ice_checklist_with_preference(grant, preferred_ice_path) {
         let addr = ice_candidate_addr(&candidate);
         if is_unusable_backend_candidate_addr(&addr) {
             info!(
@@ -695,7 +836,7 @@ fn try_connect_ice_udp(
                         ],
                     )
                 );
-                return Ok(Some(stream));
+                return Ok(Some((stream, candidate)));
             }
             Err(error) => {
                 let reason = error.to_string();
@@ -742,7 +883,10 @@ fn try_connect_ice_udp(
     Ok(None)
 }
 
-fn ice_checklist(grant: &SessionOpenGrant) -> Vec<IceCandidate> {
+fn ice_checklist_with_preference(
+    grant: &SessionOpenGrant,
+    preferred: Option<&IceCandidate>,
+) -> Vec<IceCandidate> {
     let Some(ice) = &grant.authorization.ice else {
         return Vec::new();
     };
@@ -753,12 +897,31 @@ fn ice_checklist(grant: &SessionOpenGrant) -> Vec<IceCandidate> {
         .cloned()
         .collect::<Vec<_>>();
     candidates.sort_by(|left, right| {
-        ice_kind_rank(left.kind)
-            .cmp(&ice_kind_rank(right.kind))
-            .then_with(|| right.priority.cmp(&left.priority))
-            .then_with(|| left.foundation.cmp(&right.foundation))
+        candidate_preference_rank(left, preferred)
+            .cmp(&candidate_preference_rank(right, preferred))
+            .then_with(|| {
+                ice_kind_rank(left.kind)
+                    .cmp(&ice_kind_rank(right.kind))
+                    .then_with(|| right.priority.cmp(&left.priority))
+                    .then_with(|| left.foundation.cmp(&right.foundation))
+            })
     });
     candidates
+}
+
+fn candidate_preference_rank(candidate: &IceCandidate, preferred: Option<&IceCandidate>) -> u8 {
+    if preferred.is_some_and(|preferred| same_ice_candidate(candidate, preferred)) {
+        0
+    } else {
+        1
+    }
+}
+
+fn same_ice_candidate(left: &IceCandidate, right: &IceCandidate) -> bool {
+    left.transport.eq_ignore_ascii_case(&right.transport)
+        && left.kind == right.kind
+        && left.addr == right.addr
+        && left.port == right.port
 }
 
 fn ice_kind_rank(kind: IceCandidateKind) -> u8 {
@@ -1388,7 +1551,7 @@ mod tests {
         )
         .unwrap();
 
-        let checklist = ice_checklist(&grant);
+        let checklist = ice_checklist_with_preference(&grant, None);
         let kinds = checklist
             .iter()
             .map(|candidate| candidate.kind)
@@ -1456,5 +1619,97 @@ mod tests {
 
         assert_eq!(writer.bytes, b"abcdef");
         assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn idle_pool_keeps_only_configured_spares_per_service() {
+        let mut pool = IdlePool::new(1);
+
+        assert!(pool.push("hello", 1).is_ok());
+        assert!(pool.push("hello", 2).is_err());
+        assert_eq!(pool.pop("hello"), Some(1));
+        assert_eq!(pool.pop("hello"), None);
+    }
+
+    #[test]
+    fn ice_checklist_tries_preferred_successful_pair_first() {
+        let grant = session_grant_with_ice_candidates();
+        let preferred = IceCandidate {
+            foundation: "srflx-udp-1".into(),
+            component: 1,
+            transport: "udp".into(),
+            priority: 100,
+            addr: "198.51.100.20".into(),
+            port: 17002,
+            kind: IceCandidateKind::Srflx,
+            related_addr: None,
+            related_port: None,
+        };
+
+        let checklist = ice_checklist_with_preference(&grant, Some(&preferred));
+        let addrs = checklist.iter().map(ice_candidate_addr).collect::<Vec<_>>();
+
+        assert_eq!(addrs[0], "198.51.100.20:17002");
+    }
+
+    fn session_grant_with_ice_candidates() -> SessionOpenGrant {
+        serde_json::from_str(
+            r#"
+            {
+              "session_id": "sess_1",
+              "service_id": "hello",
+              "node_id": "node-1",
+              "relay_hint": "127.0.0.1:7001",
+              "authorization": {
+                "token": "token",
+                "expires_at": "2099-01-01T00:00:00Z",
+                "candidates": [],
+                "ice": {
+                  "credentials": {
+                    "ufrag": "ufrag",
+                    "pwd": "pwd",
+                    "expires_at": "2099-01-01T00:00:00Z"
+                  },
+                  "candidates": [
+                    {
+                      "foundation": "relay-udp-1",
+                      "component": 1,
+                      "transport": "udp",
+                      "priority": 10,
+                      "addr": "127.0.0.1",
+                      "port": 7001,
+                      "kind": "relay",
+                      "related_addr": null,
+                      "related_port": null
+                    },
+                    {
+                      "foundation": "host-udp-1",
+                      "component": 1,
+                      "transport": "udp",
+                      "priority": 300,
+                      "addr": "192.168.1.44",
+                      "port": 17002,
+                      "kind": "host",
+                      "related_addr": null,
+                      "related_port": null
+                    },
+                    {
+                      "foundation": "srflx-udp-1",
+                      "component": 1,
+                      "transport": "udp",
+                      "priority": 100,
+                      "addr": "198.51.100.20",
+                      "port": 17002,
+                      "kind": "srflx",
+                      "related_addr": null,
+                      "related_port": null
+                    }
+                  ]
+                }
+              }
+            }
+            "#,
+        )
+        .unwrap()
     }
 }
