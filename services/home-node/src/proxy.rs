@@ -665,9 +665,6 @@ async fn proxy_stream_to_service<S>(mut inbound: S, service: &ProxyService) -> a
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    let mut outbound = TcpStream::connect(&service.target)
-        .await
-        .with_context(|| format!("connect service {} target {}", service.id, service.target))?;
     if let Some(config) = &service.tls_config {
         tracing::info!(service_id = %service.id, "accepting Medium TLS for service");
         let acceptor = TlsAcceptor::from(config.clone());
@@ -676,12 +673,264 @@ where
             .await
             .with_context(|| format!("accept TLS for service {}", service.id))?;
         tracing::info!(service_id = %service.id, "accepted Medium TLS for service");
+        let request = read_http_request_for_proxy(&mut inbound, service).await?;
+        let mut outbound = match TcpStream::connect(&service.target).await {
+            Ok(outbound) => outbound,
+            Err(error) => {
+                tracing::warn!(
+                    service_id = %service.id,
+                    target = %service.target,
+                    %error,
+                    "service target unavailable after Medium TLS accept"
+                );
+                write_service_unavailable_response(&mut inbound, service, &error).await?;
+                return Ok(());
+            }
+        };
+        tracing::info!(service_id = %service.id, target = %service.target, "connected HTTP service target");
+        if let Err(error) = outbound.write_all(&request).await {
+            tracing::warn!(
+                service_id = %service.id,
+                target = %service.target,
+                %error,
+                "failed to write HTTP request to service target"
+            );
+            write_service_closed_response(&mut inbound, service, &error.to_string()).await?;
+            return Ok(());
+        }
+        outbound.flush().await?;
+        if !forward_first_http_response_chunk(&mut outbound, &mut inbound, service).await? {
+            return Ok(());
+        }
         let _ = copy_bidirectional(&mut inbound, &mut outbound).await?;
         tracing::info!(service_id = %service.id, "finished TLS-terminated service proxy");
         return Ok(());
     }
 
+    let mut outbound = TcpStream::connect(&service.target)
+        .await
+        .with_context(|| format!("connect service {} target {}", service.id, service.target))?;
     let _ = copy_bidirectional(&mut inbound, &mut outbound).await?;
+    Ok(())
+}
+
+async fn read_http_request_for_proxy<R>(
+    reader: &mut R,
+    service: &ProxyService,
+) -> anyhow::Result<Vec<u8>>
+where
+    R: AsyncRead + Unpin,
+{
+    let mut buffer = Vec::with_capacity(1024);
+    let mut chunk = [0_u8; 1024];
+    let result = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            let size = reader.read(&mut chunk).await?;
+            if size == 0 {
+                break;
+            }
+            buffer.extend_from_slice(&chunk[..size]);
+            if complete_http_request(&buffer) {
+                break;
+            }
+            if buffer.len() > 64 * 1024 {
+                break;
+            }
+        }
+        anyhow::Ok(())
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => {
+            tracing::info!(
+                service_id = %service.id,
+                bytes = buffer.len(),
+                "read HTTP request before proxying to service target"
+            );
+            Ok(buffer)
+        }
+        Ok(Err(error)) => Err(error),
+        Err(_) => {
+            anyhow::bail!(
+                "timed out waiting for HTTP request for service {}",
+                service.id
+            )
+        }
+    }
+}
+
+async fn forward_first_http_response_chunk<R, W>(
+    reader: &mut R,
+    writer: &mut W,
+    service: &ProxyService,
+) -> anyhow::Result<bool>
+where
+    R: AsyncRead + Unpin,
+    W: AsyncWrite + Unpin,
+{
+    let mut buffer = [0_u8; 16 * 1024];
+    let size =
+        match tokio::time::timeout(std::time::Duration::from_secs(12), reader.read(&mut buffer))
+            .await
+        {
+            Ok(Ok(size)) => size,
+            Ok(Err(error)) => {
+                tracing::warn!(
+                    service_id = %service.id,
+                    target = %service.target,
+                    %error,
+                    "failed to read first HTTP response chunk from service target"
+                );
+                write_service_closed_response(writer, service, &error.to_string()).await?;
+                return Ok(false);
+            }
+            Err(_) => {
+                tracing::warn!(
+                    service_id = %service.id,
+                    target = %service.target,
+                    "timed out waiting for first HTTP response chunk from service target"
+                );
+                write_service_timeout_response(writer, service).await?;
+                return Ok(false);
+            }
+        };
+
+    if size == 0 {
+        tracing::warn!(
+            service_id = %service.id,
+            target = %service.target,
+            "service target closed before returning a response"
+        );
+        write_service_closed_response(
+            writer,
+            service,
+            "service target closed before returning a response",
+        )
+        .await?;
+        return Ok(false);
+    }
+
+    writer.write_all(&buffer[..size]).await?;
+    writer.flush().await?;
+    tracing::info!(
+        service_id = %service.id,
+        target = %service.target,
+        bytes = size,
+        "forwarded first HTTP response chunk from service target"
+    );
+    Ok(true)
+}
+
+fn complete_http_request(data: &[u8]) -> bool {
+    let Some(header_end) = data.windows(4).position(|window| window == b"\r\n\r\n") else {
+        return false;
+    };
+    let headers = &data[..header_end];
+    let body_start = header_end + 4;
+    let Ok(headers) = std::str::from_utf8(headers) else {
+        return true;
+    };
+    let content_length = headers.lines().find_map(|line| {
+        let (name, value) = line.split_once(':')?;
+        if name.trim().eq_ignore_ascii_case("content-length") {
+            value.trim().parse::<usize>().ok()
+        } else {
+            None
+        }
+    });
+    match content_length {
+        Some(length) => data.len().saturating_sub(body_start) >= length,
+        None => true,
+    }
+}
+
+async fn write_service_unavailable_response<W>(
+    writer: &mut W,
+    service: &ProxyService,
+    error: &std::io::Error,
+) -> anyhow::Result<()>
+where
+    W: AsyncWrite + Unpin,
+{
+    write_http_error_response(
+        writer,
+        service,
+        "502 Bad Gateway",
+        format!(
+            "Medium service target unavailable\n\nservice: {}\ntarget: {}\nerror: {}\n",
+            service.id, service.target, error
+        ),
+        "sent Medium service unavailable response",
+    )
+    .await
+}
+
+async fn write_service_closed_response<W>(
+    writer: &mut W,
+    service: &ProxyService,
+    error: &str,
+) -> anyhow::Result<()>
+where
+    W: AsyncWrite + Unpin,
+{
+    write_http_error_response(
+        writer,
+        service,
+        "502 Bad Gateway",
+        format!(
+            "Medium service target closed before returning a response\n\nservice: {}\ntarget: {}\nerror: {}\n",
+            service.id, service.target, error
+        ),
+        "sent Medium service closed response",
+    )
+    .await
+}
+
+async fn write_service_timeout_response<W>(
+    writer: &mut W,
+    service: &ProxyService,
+) -> anyhow::Result<()>
+where
+    W: AsyncWrite + Unpin,
+{
+    write_http_error_response(
+        writer,
+        service,
+        "504 Gateway Timeout",
+        format!(
+            "Medium service target did not return a response in time\n\nservice: {}\ntarget: {}\n",
+            service.id, service.target
+        ),
+        "sent Medium service timeout response",
+    )
+    .await
+}
+
+async fn write_http_error_response<W>(
+    writer: &mut W,
+    service: &ProxyService,
+    status: &str,
+    body: String,
+    log_message: &'static str,
+) -> anyhow::Result<()>
+where
+    W: AsyncWrite + Unpin,
+{
+    let response = format!(
+        "HTTP/1.1 {status}\r\ncontent-type: text/plain; charset=utf-8\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    writer.write_all(response.as_bytes()).await?;
+    writer.flush().await?;
+    tracing::info!(
+        service_id = %service.id,
+        target = %service.target,
+        bytes = response.len(),
+        log_message
+    );
+    writer.shutdown().await?;
     Ok(())
 }
 

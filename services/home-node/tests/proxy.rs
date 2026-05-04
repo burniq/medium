@@ -49,6 +49,7 @@ target = "{target_addr}"
     let hello = SessionHello {
         token: issue_session_token("local-secret", "sess-1", "svc_ssh", "node-1").unwrap(),
         service_id: "svc_ssh".into(),
+        transport: None,
     };
     write_session_hello(&mut client, &hello).await.unwrap();
 
@@ -106,6 +107,7 @@ target = "{target_addr}"
             SessionHello {
                 token: issue_session_token("local-secret", "sess-udp", "svc_web", "node-1")?,
                 service_id: "svc_web".into(),
+                transport: None,
             },
         )?;
         std::io::Write::write_all(&mut client, b"ping\n")?;
@@ -175,6 +177,7 @@ target = "{target_addr}"
     let hello = SessionHello {
         token: issue_session_token("local-secret", "sess-1", "hello", "node-1")?,
         service_id: "hello".into(),
+        transport: None,
     };
     write_session_hello(&mut stream, &hello).await?;
 
@@ -186,6 +189,129 @@ target = "{target_addr}"
     let mut response = Vec::new();
     tls.read_to_end(&mut response).await?;
     assert!(String::from_utf8_lossy(&response).contains("hello"));
+
+    let _ = shutdown_tx.send(());
+    proxy_task.await?;
+    target_task.await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn proxy_accepts_tls_and_returns_502_when_http_target_is_down() -> anyhow::Result<()> {
+    let ca = issue_medium_service_ca()?;
+    let unavailable_target = reserve_tcp_addr()?;
+
+    let cfg: NodeConfig = toml::from_str(&format!(
+        r#"
+node_id = "node-1"
+bind_addr = "127.0.0.1:0"
+service_ca_cert_pem = """
+{cert}
+"""
+service_ca_key_pem = """
+{key}
+"""
+
+[[services]]
+id = "hello"
+kind = "http"
+target = "{unavailable_target}"
+"#,
+        cert = ca.cert_pem,
+        key = ca.key_pem,
+    ))?;
+
+    let (shutdown_tx, shutdown_rx) = oneshot::channel();
+    let (bound_addr_tx, bound_addr_rx) = oneshot::channel();
+
+    let proxy_task = tokio::spawn(async move {
+        run_tcp_proxy_with_shutdown(cfg, "local-secret", shutdown_rx, Some(bound_addr_tx))
+            .await
+            .unwrap();
+    });
+
+    let bound_addr = bound_addr_rx.await?;
+    let mut stream = TcpStream::connect(bound_addr).await?;
+    let hello = SessionHello {
+        token: issue_session_token("local-secret", "sess-down", "hello", "node-1")?,
+        service_id: "hello".into(),
+        transport: None,
+    };
+    write_session_hello(&mut stream, &hello).await?;
+
+    let connector = TlsConnector::from(Arc::new(client_tls_config(&ca.cert_pem)?));
+    let server_name = ServerName::try_from("hello.medium")?;
+    let mut tls = connector.connect(server_name, stream).await?;
+    tls.write_all(b"GET / HTTP/1.1\r\nhost: hello.medium\r\n\r\n")
+        .await?;
+    let mut response = String::new();
+    tls.read_to_string(&mut response).await?;
+    assert!(response.contains("502 Bad Gateway"));
+    assert!(response.contains("Medium service target unavailable"));
+
+    let _ = shutdown_tx.send(());
+    proxy_task.await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn proxy_returns_502_when_http_target_closes_without_response() -> anyhow::Result<()> {
+    let ca = issue_medium_service_ca()?;
+    let target_listener = TcpListener::bind("127.0.0.1:0").await?;
+    let target_addr = target_listener.local_addr()?;
+
+    let target_task = tokio::spawn(async move {
+        let (stream, _) = target_listener.accept().await.unwrap();
+        drop(stream);
+    });
+
+    let cfg: NodeConfig = toml::from_str(&format!(
+        r#"
+node_id = "node-1"
+bind_addr = "127.0.0.1:0"
+service_ca_cert_pem = """
+{cert}
+"""
+service_ca_key_pem = """
+{key}
+"""
+
+[[services]]
+id = "hello"
+kind = "http"
+target = "{target_addr}"
+"#,
+        cert = ca.cert_pem,
+        key = ca.key_pem,
+    ))?;
+
+    let (shutdown_tx, shutdown_rx) = oneshot::channel();
+    let (bound_addr_tx, bound_addr_rx) = oneshot::channel();
+
+    let proxy_task = tokio::spawn(async move {
+        run_tcp_proxy_with_shutdown(cfg, "local-secret", shutdown_rx, Some(bound_addr_tx))
+            .await
+            .unwrap();
+    });
+
+    let bound_addr = bound_addr_rx.await?;
+    let mut stream = TcpStream::connect(bound_addr).await?;
+    let hello = SessionHello {
+        token: issue_session_token("local-secret", "sess-closed", "hello", "node-1")?,
+        service_id: "hello".into(),
+        transport: None,
+    };
+    write_session_hello(&mut stream, &hello).await?;
+
+    let connector = TlsConnector::from(Arc::new(client_tls_config(&ca.cert_pem)?));
+    let server_name = ServerName::try_from("hello.medium")?;
+    let mut tls = connector.connect(server_name, stream).await?;
+    tls.write_all(b"GET / HTTP/1.1\r\nhost: hello.medium\r\n\r\n")
+        .await?;
+    let mut response = String::new();
+    tls.read_to_string(&mut response).await?;
+    assert!(response.contains("502 Bad Gateway"));
+    assert!(response.contains("closed before returning a response"));
 
     let _ = shutdown_tx.send(());
     proxy_task.await?;
@@ -251,6 +377,7 @@ target = "{target_addr}"
             SessionHello {
                 token: issue_session_token("local-secret", "sess-udp-http", "hello", "node-1")?,
                 service_id: "hello".into(),
+                transport: None,
             },
         )?;
         let connection = rustls::ClientConnection::new(
@@ -349,6 +476,7 @@ async fn wss_relay_binary_session_forwards_to_matching_service() -> anyhow::Resu
     let hello = SessionHello {
         token: issue_session_token("relay-secret", "sess-1", "svc_web", "node-1")?,
         service_id: "svc_web".into(),
+        transport: None,
     };
     let mut payload = serde_json::to_vec(&hello)?;
     payload.push(b'\n');
@@ -374,6 +502,7 @@ async fn wss_relay_binary_session_rejects_unknown_service() -> anyhow::Result<()
     let hello = SessionHello {
         token: issue_session_token("relay-secret", "sess-1", "missing", "node-1")?,
         service_id: "missing".into(),
+        transport: None,
     };
     let mut payload = serde_json::to_vec(&hello)?;
     payload.push(b'\n');

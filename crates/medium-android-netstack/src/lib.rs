@@ -1037,6 +1037,7 @@ fn connect_ice_udp_via_rendezvous(
                     SessionHello {
                         token: grant.authorization.token.clone(),
                         service_id: grant.service_id.clone(),
+                        transport: None,
                     },
                 );
                 match stream {
@@ -1124,6 +1125,7 @@ fn connect_ice_udp_candidate(
                     SessionHello {
                         token: grant.authorization.token.clone(),
                         service_id: grant.service_id.clone(),
+                        transport: None,
                     },
                 );
             }

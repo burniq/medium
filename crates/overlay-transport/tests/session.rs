@@ -66,6 +66,7 @@ async fn session_hello_round_trips_over_stream() {
     let expected = SessionHello {
         token: "signed-token".into(),
         service_id: "svc_ssh".into(),
+        transport: None,
     };
 
     let writer = tokio::spawn(async move {
@@ -103,6 +104,7 @@ fn udp_session_stream_round_trips_encrypted_bytes() {
         SessionHello {
             token: "signed-token".into(),
             service_id: "svc_web".into(),
+            transport: None,
         },
     )
     .unwrap();
@@ -139,6 +141,7 @@ fn udp_session_connect_uses_peer_reflexive_punch_source() {
         SessionHello {
             token: "signed-token".into(),
             service_id: "svc_web".into(),
+            transport: None,
         },
     )
     .unwrap();

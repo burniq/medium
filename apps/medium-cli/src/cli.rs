@@ -527,6 +527,7 @@ async fn connect_candidate(
                 &SessionHello {
                     token: grant.authorization.token.clone(),
                     service_id: grant.service_id.clone(),
+                    transport: None,
                 },
             )
             .await?;
@@ -560,6 +561,7 @@ fn session_hello_frame(grant: &SessionOpenGrant) -> anyhow::Result<Vec<u8>> {
     let mut payload = serde_json::to_vec(&SessionHello {
         token: grant.authorization.token.clone(),
         service_id: grant.service_id.clone(),
+        transport: None,
     })?;
     payload.push(b'\n');
     Ok(payload)
@@ -572,6 +574,7 @@ async fn connect_tcp_candidate(grant: &SessionOpenGrant, addr: &str) -> anyhow::
         &SessionHello {
             token: grant.authorization.token.clone(),
             service_id: grant.service_id.clone(),
+            transport: None,
         },
     )
     .await?;

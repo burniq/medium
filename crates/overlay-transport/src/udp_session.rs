@@ -934,6 +934,7 @@ mod tests {
             SessionHello {
                 token: "signed-token".into(),
                 service_id: "svc_web".into(),
+                transport: None,
             },
         )
         .unwrap();
@@ -985,6 +986,7 @@ mod tests {
             SessionHello {
                 token: "signed-token".into(),
                 service_id: "svc_web".into(),
+                transport: None,
             },
         )
         .unwrap();
@@ -1010,6 +1012,7 @@ mod tests {
         let payload = serde_json::to_vec(&SessionHello {
             token: "signed-token".into(),
             service_id: "svc_web".into(),
+            transport: None,
         })
         .unwrap();
         send_packet_to(
@@ -1049,6 +1052,7 @@ mod tests {
         let payload = serde_json::to_vec(&SessionHello {
             token: "signed-token".into(),
             service_id: "svc_web".into(),
+            transport: None,
         })
         .unwrap();
         let hello = Packet {
@@ -1100,6 +1104,7 @@ mod tests {
             SessionHello {
                 token: "signed-token".into(),
                 service_id: "svc_web".into(),
+                transport: None,
             },
         )
         .unwrap();

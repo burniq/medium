@@ -107,22 +107,12 @@ struct ServicesView: View {
                     }
                 }
 
-                #if os(iOS)
                 MediumCard {
                     VStack(alignment: .leading, spacing: 14) {
-                        SectionTitle("Tunnel")
-                        StatusPill(text: model.tunnelStatusText, systemImage: "point.3.connected.trianglepath.dotted")
-                        HStack(spacing: 12) {
-                            CompactActionButton(title: "Start", systemImage: "play.fill", isPrimary: true, isDisabled: model.isLoading) {
-                                Task { await model.startTunnel() }
-                            }
-                            CompactActionButton(title: "Stop", systemImage: "stop.fill", isPrimary: false, isDisabled: model.isLoading) {
-                                Task { await model.stopTunnel() }
-                            }
-                        }
+                        SectionTitle("Foreground Browser")
+                        StatusPill(text: "Tap an HTTP service to open it inside Medium. This temporary mode works only while the app stays open.", systemImage: "globe.badge.chevron.backward")
                     }
                 }
-                #endif
 
                 if model.devices.isEmpty && !model.isLoading {
                     EmptyServicesCard()
@@ -139,7 +129,7 @@ struct ServicesView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                             ForEach(device.services) { service in
-                                ServiceCard(service: service) {
+                                ServiceCard(service: service, isEnabled: service.kind != .ssh) {
                                     Task { await model.open(service: service) }
                                 }
                             }
@@ -175,9 +165,60 @@ struct ServicesView: View {
         )) { sheet in
             SessionGrantView(grant: sheet.grant)
         }
+        .sheet(item: Binding(
+            get: { model.browserSession },
+            set: { if $0 == nil { model.closeBrowser() } }
+        )) { session in
+            ForegroundBrowserView(session: session) {
+                model.closeBrowser()
+            }
+        }
         .task {
             if model.devices.isEmpty {
                 await model.refreshDevices()
+            }
+        }
+    }
+}
+
+struct ForegroundBrowserView: View {
+    let session: ForegroundBrowserSession
+    let onClose: () -> Void
+    @State private var navigationError: String?
+
+    var body: some View {
+        NavigationStack {
+            ZStack(alignment: .top) {
+                MediumWebView(url: session.localURL) { message in
+                    navigationError = message
+                }
+                .ignoresSafeArea(edges: .bottom)
+
+                if let navigationError {
+                    Text(navigationError)
+                        .font(.footnote)
+                        .foregroundStyle(MediumPalette.background)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(MediumPalette.accent)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .padding(.top, 12)
+                        .padding(.horizontal, 16)
+                }
+            }
+            .navigationTitle(session.service.displayName)
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(MediumPalette.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            #endif
+            .toolbar {
+                ToolbarItem {
+                    Button("Close") {
+                        onClose()
+                    }
+                }
             }
         }
     }
@@ -419,6 +460,7 @@ private struct EmptyServicesCard: View {
 
 private struct ServiceCard: View {
     let service: PublishedService
+    let isEnabled: Bool
     let action: () -> Void
 
     var body: some View {
@@ -428,7 +470,7 @@ private struct ServiceCard: View {
                     Rectangle()
                         .fill(MediumPalette.surface)
                         .overlay(Rectangle().stroke(MediumPalette.stroke, lineWidth: 1))
-                    Image(systemName: service.kind == .https ? "globe" : "terminal")
+                    Image(systemName: service.kind == .ssh ? "terminal" : "globe")
                         .font(.headline)
                         .foregroundStyle(MediumPalette.accent)
                 }
@@ -460,6 +502,7 @@ private struct ServiceCard: View {
             .overlay(Rectangle().stroke(MediumPalette.stroke, lineWidth: 1))
         }
         .buttonStyle(.plain)
+        .disabled(!isEnabled)
     }
 }
 

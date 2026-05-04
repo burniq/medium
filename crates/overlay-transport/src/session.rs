@@ -25,6 +25,8 @@ pub enum RelayHello {
 pub struct SessionHello {
     pub token: String,
     pub service_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transport: Option<String>,
 }
 
 pub async fn write_relay_hello<W>(writer: &mut W, hello: &RelayHello) -> anyhow::Result<()>

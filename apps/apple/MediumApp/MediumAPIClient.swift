@@ -13,6 +13,15 @@ struct MediumAPIClient {
         return try JSONDecoder.medium.decode(DeviceCatalog.self, from: data)
     }
 
+    func fetchMediumCA() async throws -> String {
+        let request = try makeRequest(path: "/api/medium-ca.pem")
+        let data = try await load(request)
+        guard let pem = String(data: data, encoding: .utf8), pem.contains("BEGIN CERTIFICATE") else {
+            throw MediumClientError.invalidResponse
+        }
+        return pem
+    }
+
     func openSession(serviceID: String) async throws -> SessionOpenGrant {
         let request = try makeOpenSessionRequest(serviceID: serviceID)
         let data = try await load(request)

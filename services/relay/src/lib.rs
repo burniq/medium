@@ -359,7 +359,14 @@ async fn handle_connection(
             tracing::info!(%node_id, "TCP relay client connected");
             let mut node_stream = wait_for_node_stream(waiting_nodes, &node_id).await?;
             tracing::info!(%node_id, "TCP relay paired client with node");
-            let _ = copy_bidirectional(&mut stream, &mut node_stream).await?;
+            let (client_to_node_bytes, node_to_client_bytes) =
+                copy_bidirectional(&mut stream, &mut node_stream).await?;
+            tracing::info!(
+                %node_id,
+                client_to_node_bytes,
+                node_to_client_bytes,
+                "TCP relay session finished"
+            );
         }
     }
     Ok(())

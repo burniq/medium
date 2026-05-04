@@ -19,8 +19,6 @@ targets:
     type: application
     platform: iOS
     sources: [MediumApp]
-    dependencies:
-      - target: MediumPacketTunnel
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
@@ -30,7 +28,6 @@ targets:
         INFOPLIST_KEY_UILaunchStoryboardName: LaunchScreen
         INFOPLIST_KEY_UIRequiresFullScreen: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        CODE_SIGN_ENTITLEMENTS: MediumApp/MediumApp.entitlements
   MediumPacketTunnel:
     type: app-extension
     platform: iOS

@@ -5,8 +5,10 @@ final class MediumAppModel: ObservableObject {
     @Published var state: MediumClientState?
     @Published var devices: [DeviceRecord] = []
     @Published var selectedGrant: SessionOpenGrant?
+    @Published var browserSession: ForegroundBrowserSession?
     @Published var errorMessage: String?
     @Published var isLoading = false
+    private let foregroundBrowserProxy = ForegroundBrowserProxy()
     #if os(iOS)
     @Published var tunnelStatusText = "Tunnel not configured"
     let tunnelManager = TunnelManager()
@@ -22,17 +24,28 @@ final class MediumAppModel: ObservableObject {
     func join(inviteText: String, deviceName: String) async {
         await run {
             let invite = try JoinInvite.parse(inviteText.trimmingCharacters(in: .whitespacesAndNewlines))
-            let clientState = MediumClientState(
+            let baseState = MediumClientState(
                 controlURL: invite.controlURL,
                 deviceName: deviceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "iphone" : deviceName,
                 inviteVersion: invite.version,
                 security: invite.security,
-                controlPin: invite.controlPin
+                controlPin: invite.controlPin,
+                serviceCAPEM: nil
+            )
+            let serviceCAPEM = try await makeClient(state: baseState).fetchMediumCA()
+            let clientState = MediumClientState(
+                controlURL: baseState.controlURL,
+                deviceName: baseState.deviceName,
+                inviteVersion: baseState.inviteVersion,
+                security: baseState.security,
+                controlPin: baseState.controlPin,
+                serviceCAPEM: serviceCAPEM
             )
             try store.save(clientState)
             state = clientState
             devices = []
             selectedGrant = nil
+            browserSession = nil
         }
     }
 
@@ -50,15 +63,33 @@ final class MediumAppModel: ObservableObject {
             guard let state else {
                 throw MediumClientError.missingState
             }
-            selectedGrant = try await makeClient(state: state).openSession(serviceID: service.id)
+            let currentState = try await ensureServiceCA(state)
+            let grant = try await makeClient(state: currentState).openSession(serviceID: service.id)
+            #if os(iOS)
+            let localURL = try await foregroundBrowserProxy.start(
+                service: service,
+                grant: grant,
+                serviceCAPEM: currentState.serviceCAPEM
+            )
+            browserSession = ForegroundBrowserSession(id: grant.sessionID, service: service, localURL: localURL)
+            #else
+            selectedGrant = grant
+            #endif
         }
+    }
+
+    func closeBrowser() {
+        foregroundBrowserProxy.stop()
+        browserSession = nil
     }
 
     func reset() {
         try? store.clear()
+        foregroundBrowserProxy.stop()
         state = nil
         devices = []
         selectedGrant = nil
+        browserSession = nil
         errorMessage = nil
     }
 
@@ -97,5 +128,23 @@ final class MediumAppModel: ObservableObject {
             )
         }
         return MediumAPIClient(state: state)
+    }
+
+    private func ensureServiceCA(_ currentState: MediumClientState) async throws -> MediumClientState {
+        if currentState.serviceCAPEM?.isEmpty == false {
+            return currentState
+        }
+        let serviceCAPEM = try await makeClient(state: currentState).fetchMediumCA()
+        let updated = MediumClientState(
+            controlURL: currentState.controlURL,
+            deviceName: currentState.deviceName,
+            inviteVersion: currentState.inviteVersion,
+            security: currentState.security,
+            controlPin: currentState.controlPin,
+            serviceCAPEM: serviceCAPEM
+        )
+        try store.save(updated)
+        state = updated
+        return updated
     }
 }
