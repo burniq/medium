@@ -48,7 +48,7 @@ Control-plane diagnostics:
 
 Node runtime:
   medium run [--config <path>]
-      Run node-agent using /etc/medium/node.toml by default.
+      Run node-agent using ~/.medium/node.toml by default.
 
 SSH and proxy:
   medium ssh sync [--write-main-config]
@@ -330,7 +330,7 @@ where
             })
         }
         [_binary, command] if command == "run" => Ok(Command::Run {
-            config_path: install::node_config_path(&install::install_root()),
+            config_path: install::default_node_config_path(&install::install_root()),
         }),
         [_binary, command] if command == "info" => Ok(Command::Info),
         [_binary, command, value] if command == "normalize-label" => Ok(Command::NormalizeLabel {

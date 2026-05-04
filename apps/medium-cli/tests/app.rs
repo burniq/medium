@@ -4,6 +4,12 @@ use medium_cli::state::AppState;
 use medium_cli::{run, run_main};
 use std::fs;
 use std::path::Path;
+use std::sync::{Mutex, OnceLock};
+
+fn env_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
 
 #[test]
 fn title_matches_product_name() {
@@ -74,12 +80,15 @@ fn run_supports_label_normalization() -> anyhow::Result<()> {
 
 #[test]
 fn run_without_config_uses_default_node_config_path() -> anyhow::Result<()> {
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
     let temp = tempfile::tempdir()?;
     let _root = EnvGuard::set_path("MEDIUM_ROOT", temp.path());
     let error = run(vec!["medium".to_string(), "run".to_string()]).unwrap_err();
     let expected = temp
         .path()
-        .join("etc/medium/node.toml")
+        .join("home/.medium/node.toml")
         .display()
         .to_string();
     assert!(
@@ -87,6 +96,34 @@ fn run_without_config_uses_default_node_config_path() -> anyhow::Result<()> {
         "expected {expected:?} in error {error:?}"
     );
     assert!(!error.contains("usage: medium"));
+    Ok(())
+}
+
+#[test]
+fn run_without_config_falls_back_to_legacy_node_config_path() -> anyhow::Result<()> {
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
+    let temp = tempfile::tempdir()?;
+    let _root = EnvGuard::set_path("MEDIUM_ROOT", temp.path());
+    let legacy_config_path = temp.path().join("etc/medium/node.toml");
+    fs::create_dir_all(legacy_config_path.parent().expect("legacy config dir"))?;
+    fs::write(
+        &legacy_config_path,
+        r#"
+node_id = "legacy-node"
+
+[[services]]
+id = "svc_ssh"
+kind = "ssh"
+target = "127.0.0.1:22"
+"#,
+    )?;
+
+    let output = run(vec!["medium".to_string(), "run".to_string()]).map_err(anyhow::Error::msg)?;
+
+    assert!(output.contains("agent ready for legacy-node"));
+    assert!(output.contains("svc_ssh:ssh@127.0.0.1:22"));
     Ok(())
 }
 

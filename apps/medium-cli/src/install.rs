@@ -43,6 +43,7 @@ struct InstallLayout {
     service_ca_cert_path: PathBuf,
     service_ca_key_path: PathBuf,
     node_config_path: PathBuf,
+    node_services_path: PathBuf,
     database_path: PathBuf,
     control_unit_path: PathBuf,
     node_unit_path: PathBuf,
@@ -52,6 +53,7 @@ struct InstallLayout {
 impl InstallLayout {
     fn new(root: &Path) -> Self {
         let (config_dir, state_dir, systemd_unit_dir) = install_dirs(root);
+        let node_config_dir = node_config_dir(root);
 
         Self {
             control_config_path: config_dir.join("control.toml"),
@@ -59,7 +61,8 @@ impl InstallLayout {
             control_key_path: config_dir.join("control.key"),
             service_ca_cert_path: config_dir.join("service-ca.crt"),
             service_ca_key_path: config_dir.join("service-ca.key"),
-            node_config_path: config_dir.join("node.toml"),
+            node_config_path: node_config_dir.join("node.toml"),
+            node_services_path: node_config_dir.join("services.toml"),
             database_path: state_dir.join("control-plane.db"),
             control_unit_path: systemd_unit_dir.join("medium-control-plane.service"),
             node_unit_path: systemd_unit_dir.join("medium-node-agent.service"),
@@ -78,7 +81,13 @@ impl InstallLayout {
     }
 
     fn is_node_bootstrapped(&self) -> bool {
-        self.node_config_path.exists() || self.node_unit_path.exists()
+        self.node_config_path.exists()
+            || self.legacy_node_config_path().exists()
+            || self.node_unit_path.exists()
+    }
+
+    fn legacy_node_config_path(&self) -> PathBuf {
+        self.config_dir.join("node.toml")
     }
 }
 
@@ -103,6 +112,22 @@ fn install_dirs(root: &Path) -> (PathBuf, PathBuf, PathBuf) {
         root.join("var").join("lib").join("medium"),
         root.join("etc").join("systemd").join("system"),
     )
+}
+
+fn node_config_dir(root: &Path) -> PathBuf {
+    if let Some(home) = std::env::var_os("MEDIUM_HOME").or_else(|| std::env::var_os("OVERLAY_HOME"))
+    {
+        return PathBuf::from(home).join(".medium");
+    }
+
+    if root != Path::new("/") {
+        return root.join("home").join(".medium");
+    }
+
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".medium")
 }
 
 pub fn init_control(reconfigure: bool) -> anyhow::Result<InitControlReport> {
@@ -254,8 +279,9 @@ fn init_node_at(
         bail!("Medium node is already initialized; rerun with --reconfigure to rewrite node files");
     }
 
-    fs::create_dir_all(&layout.config_dir)
-        .with_context(|| format!("create {}", layout.config_dir.display()))?;
+    if let Some(parent) = layout.node_config_path.parent() {
+        fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
+    }
     if writes_systemd_units(root) {
         fs::create_dir_all(&layout.systemd_unit_dir)
             .with_context(|| format!("create {}", layout.systemd_unit_dir.display()))?;
@@ -273,8 +299,8 @@ fn init_node_at(
         profile.wss_relay_url.as_deref().unwrap_or(""),
         profile.service_ca_cert_pem.as_deref(),
         profile.service_ca_key_pem.as_deref(),
-        DEFAULT_SSH_SERVICE_ID,
     )?;
+    write_default_services_config(&layout.node_services_path)?;
     if writes_systemd_units(root) {
         write_node_systemd_unit(
             &layout,
@@ -438,7 +464,6 @@ fn write_home_node_config(
     wss_relay_url: &str,
     service_ca_cert_pem: Option<&str>,
     service_ca_key_pem: Option<&str>,
-    ssh_service_id: &str,
 ) -> anyhow::Result<()> {
     let relay_line = if relay_addr.trim().is_empty() {
         String::new()
@@ -457,7 +482,18 @@ fn write_home_node_config(
         .map(|pem| format!("service_ca_key_pem = \"\"\"\n{pem}\"\"\"\n"))
         .unwrap_or_default();
     let contents = format!(
-        "node_id = \"{node_id}\"\nnode_label = \"{node_id}\"\nbind_addr = \"{bind_addr}\"\npublic_addr = \"{public_addr}\"\ncontrol_url = \"{control_url}\"\nshared_secret = \"{shared_secret}\"\ncontrol_pin = \"{control_pin}\"\n{relay_line}{wss_relay_line}{service_ca_cert}{service_ca_key}\n[[services]]\nid = \"{ssh_service_id}\"\nkind = \"ssh\"\ntarget = \"{DEFAULT_SSH_TARGET}\"\nuser_name = \"{DEFAULT_SSH_USER}\"\n"
+        "node_id = \"{node_id}\"\nnode_label = \"{node_id}\"\nbind_addr = \"{bind_addr}\"\npublic_addr = \"{public_addr}\"\ncontrol_url = \"{control_url}\"\nshared_secret = \"{shared_secret}\"\ncontrol_pin = \"{control_pin}\"\n{relay_line}{wss_relay_line}{service_ca_cert}{service_ca_key}"
+    );
+    fs::write(path, contents).with_context(|| format!("write {}", path.display()))
+}
+
+fn write_default_services_config(path: &Path) -> anyhow::Result<()> {
+    if path.exists() {
+        return Ok(());
+    }
+
+    let contents = format!(
+        "[[services]]\nid = \"{DEFAULT_SSH_SERVICE_ID}\"\nkind = \"ssh\"\ntarget = \"{DEFAULT_SSH_TARGET}\"\nuser_name = \"{DEFAULT_SSH_USER}\"\nenabled = true\n"
     );
     fs::write(path, contents).with_context(|| format!("write {}", path.display()))
 }
@@ -719,8 +755,22 @@ pub(crate) fn control_config_path(root: &Path) -> PathBuf {
     InstallLayout::new(root).control_config_path
 }
 
-pub(crate) fn node_config_path(root: &Path) -> PathBuf {
-    InstallLayout::new(root).node_config_path
+pub(crate) fn default_node_config_path(root: &Path) -> PathBuf {
+    let layout = InstallLayout::new(root);
+    if layout.node_config_path.is_file() {
+        return layout.node_config_path;
+    }
+
+    let legacy_path = layout.legacy_node_config_path();
+    if legacy_path.is_file() {
+        return legacy_path;
+    }
+
+    layout.node_config_path
+}
+
+pub(crate) fn node_services_path(root: &Path) -> PathBuf {
+    InstallLayout::new(root).node_services_path
 }
 
 pub(crate) fn database_path(root: &Path) -> PathBuf {

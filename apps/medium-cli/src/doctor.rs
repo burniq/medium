@@ -27,7 +27,8 @@ impl DoctorReport {
 pub fn inspect(paths: &AppPaths) -> anyhow::Result<DoctorReport> {
     let root = install::install_root();
     let control_config_path = install::control_config_path(&root);
-    let node_config_path = install::node_config_path(&root);
+    let node_config_path = install::default_node_config_path(&root);
+    let node_services_path = install::node_services_path(&root);
     let database_path = install::database_path(&root);
     let ssh = inspect_ssh(paths)?;
 
@@ -39,6 +40,8 @@ pub fn inspect(paths: &AppPaths) -> anyhow::Result<DoctorReport> {
     lines.push(control_config_line(&control_config_path)?);
     lines.push(path_line("node-config", &node_config_path));
     lines.push(node_config_line(&node_config_path));
+    lines.push(path_line("services-config", &node_services_path));
+    lines.push(services_config_line(&node_services_path));
     lines.push(path_line("control-db", &database_path));
     lines.push(path_line(
         "control-plane-bin",
@@ -54,6 +57,17 @@ pub fn inspect(paths: &AppPaths) -> anyhow::Result<DoctorReport> {
     lines.push(service_line(NODE_SERVICE));
 
     Ok(DoctorReport { lines })
+}
+
+fn services_config_line(path: &Path) -> String {
+    if !path.is_file() {
+        return "services-config-valid: missing".into();
+    }
+
+    match home_node::config::load_services_from_path(path) {
+        Ok(_) => "services-config-valid: ok".into(),
+        Err(error) => format!("services-config-valid: invalid ({error})"),
+    }
 }
 
 fn path_line(label: &str, path: &Path) -> String {

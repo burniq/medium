@@ -27,7 +27,7 @@ impl AppPaths {
 
     pub fn for_linux_home(home_dir: impl AsRef<Path>) -> Self {
         let home_dir = home_dir.as_ref().to_path_buf();
-        let app_config_dir = home_dir.join(".config").join("medium");
+        let app_config_dir = home_dir.join(".medium");
         let state_dir = home_dir.join(".local").join("share").join("medium");
         let ssh_dir = home_dir.join(".ssh");
         let ssh_config_dir = ssh_dir.join("config.d");
@@ -46,11 +46,11 @@ impl AppPaths {
 
     pub fn for_macos_home(home_dir: impl AsRef<Path>) -> Self {
         let home_dir = home_dir.as_ref().to_path_buf();
+        let app_config_dir = home_dir.join(".medium");
         let app_root = home_dir
             .join("Library")
             .join("Application Support")
             .join("Medium");
-        let app_config_dir = app_root.join("config");
         let state_dir = app_root.join("state");
         let ssh_dir = home_dir.join(".ssh");
         let ssh_config_dir = ssh_dir.join("config.d");
@@ -68,6 +68,10 @@ impl AppPaths {
     }
 
     pub fn from_env() -> anyhow::Result<Self> {
+        if let Some(home) = std::env::var_os("MEDIUM_HOME") {
+            return Ok(Self::from_home(home));
+        }
+
         if let Some(home) = std::env::var_os("OVERLAY_HOME") {
             return Ok(Self::from_home(home));
         }

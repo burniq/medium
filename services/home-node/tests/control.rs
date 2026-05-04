@@ -58,3 +58,29 @@ target = "127.0.0.1:3000"
     assert_eq!(&ice_addrs[..2], &["192.168.1.44:17002", "[fd00::44]:17002"]);
     assert!(ice_addrs.contains(&"198.51.100.10:17002"));
 }
+
+#[test]
+fn registration_skips_disabled_services() {
+    let cfg: NodeConfig = toml::from_str(
+        r#"
+node_id = "node-1"
+
+[[services]]
+id = "enabled_web"
+kind = "http"
+target = "127.0.0.1:8082"
+
+[[services]]
+id = "paused_web"
+kind = "http"
+target = "127.0.0.1:8083"
+enabled = false
+"#,
+    )
+    .unwrap();
+
+    let registration = build_registration(&cfg);
+
+    assert_eq!(registration.services.len(), 1);
+    assert_eq!(registration.services[0].id, "enabled_web");
+}

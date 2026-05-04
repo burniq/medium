@@ -573,6 +573,9 @@ async fn proxy_services_from_config(
 ) -> anyhow::Result<HashMap<String, ProxyService>> {
     let mut services = HashMap::new();
     for service in &cfg.services {
+        if !service.enabled {
+            continue;
+        }
         let kind = service.kind.to_ascii_lowercase();
         let hostname = service_hostname(service);
         let tls_config = if kind == "http" {

@@ -179,8 +179,12 @@ async fn doctor_reports_bootstrapped_files_and_service_statuses() -> anyhow::Res
         "bind_addr = \"0.0.0.0:7777\"\ndatabase_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\ncontrol_pin = \"ctrl_pub_123\"\n",
     )?;
     fs::write(
-        root_dir.join("etc/medium/node.toml"),
-        "node_id = \"node-1\"\nnode_label = \"node-1\"\nbind_addr = \"198.51.100.24:17001\"\n\n[[services]]\nid = \"svc_ssh\"\nkind = \"ssh\"\ntarget = \"127.0.0.1:22\"\nuser_name = \"overlay\"\n",
+        paths.app_config_dir.join("node.toml"),
+        "node_id = \"node-1\"\nnode_label = \"node-1\"\nbind_addr = \"198.51.100.24:17001\"\n",
+    )?;
+    fs::write(
+        paths.app_config_dir.join("services.toml"),
+        "[[services]]\nid = \"svc_ssh\"\nkind = \"ssh\"\ntarget = \"127.0.0.1:22\"\nuser_name = \"overlay\"\nenabled = true\n",
     )?;
     fs::write(root_dir.join("var/lib/medium/control-plane.db"), [])?;
 
@@ -200,6 +204,8 @@ async fn doctor_reports_bootstrapped_files_and_service_statuses() -> anyhow::Res
     assert!(output.contains("control-config-valid: ok"));
     assert!(output.contains("node-config: ok"));
     assert!(output.contains("node-config-valid: ok"));
+    assert!(output.contains("services-config: ok"));
+    assert!(output.contains("services-config-valid: ok"));
     assert!(output.contains("control-db: ok"));
     assert!(output.contains("ssh-include: ok"));
     assert!(output.contains("ssh-managed-config: ok"));
@@ -221,7 +227,11 @@ async fn doctor_uses_macos_application_support_and_usr_local_bins() -> anyhow::R
     fs::create_dir_all(&paths.state_dir)?;
     fs::write(
         paths.app_config_dir.join("node.toml"),
-        "node_id = \"mac-node\"\nnode_label = \"mac-node\"\nbind_addr = \"127.0.0.1:17001\"\n\n[[services]]\nid = \"svc_ssh\"\nkind = \"ssh\"\ntarget = \"127.0.0.1:22\"\nuser_name = \"overlay\"\n",
+        "node_id = \"mac-node\"\nnode_label = \"mac-node\"\nbind_addr = \"127.0.0.1:17001\"\n",
+    )?;
+    fs::write(
+        paths.app_config_dir.join("services.toml"),
+        "[[services]]\nid = \"svc_ssh\"\nkind = \"ssh\"\ntarget = \"127.0.0.1:22\"\nuser_name = \"overlay\"\nenabled = true\n",
     )?;
 
     let _home = EnvGuard::set_path("OVERLAY_HOME", &home_dir);
@@ -262,6 +272,7 @@ async fn doctor_reads_legacy_state_and_ssh_without_migrating() -> anyhow::Result
     let paths = AppPaths::from_home(&home_dir);
     let legacy_state_path = home_dir.join(".config/overlay/state.json");
     let legacy_managed_path = home_dir.join(".ssh/config.d/overlay.conf");
+    fs::create_dir_all(&paths.app_config_dir)?;
     fs::create_dir_all(legacy_state_path.parent().expect("legacy state dir"))?;
     fs::create_dir_all(paths.ssh_config_dir.clone())?;
     fs::create_dir_all(root_dir.join("etc/medium"))?;
@@ -291,8 +302,12 @@ async fn doctor_reads_legacy_state_and_ssh_without_migrating() -> anyhow::Result
         "bind_addr = \"0.0.0.0:7777\"\ndatabase_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\ncontrol_pin = \"ctrl_pub_123\"\n",
     )?;
     fs::write(
-        root_dir.join("etc/medium/node.toml"),
-        "node_id = \"node-1\"\nnode_label = \"node-1\"\nbind_addr = \"198.51.100.24:17001\"\n\n[[services]]\nid = \"svc_ssh\"\nkind = \"ssh\"\ntarget = \"127.0.0.1:22\"\nuser_name = \"overlay\"\n",
+        paths.app_config_dir.join("node.toml"),
+        "node_id = \"node-1\"\nnode_label = \"node-1\"\nbind_addr = \"198.51.100.24:17001\"\n",
+    )?;
+    fs::write(
+        paths.app_config_dir.join("services.toml"),
+        "[[services]]\nid = \"svc_ssh\"\nkind = \"ssh\"\ntarget = \"127.0.0.1:22\"\nuser_name = \"overlay\"\nenabled = true\n",
     )?;
     fs::write(root_dir.join("var/lib/medium/control-plane.db"), [])?;
 
@@ -341,7 +356,7 @@ async fn doctor_reports_structurally_invalid_configs() -> anyhow::Result<()> {
         "# bind_addr = \"0.0.0.0:7777\"\n# database_url = \"sqlite:///tmp/control-plane.db\"\ncontrol_url = \"https://control.example.test\"\nshared_secret = \"secret\"\ncontrol_pin = \"ctrl_pub_123\"\n",
     )?;
     fs::write(
-        root_dir.join("etc/medium/node.toml"),
+        paths.app_config_dir.join("node.toml"),
         "# node_id = \"node-1\"\nnode_label = \"node-1\"\n",
     )?;
 

@@ -109,3 +109,50 @@ target = "127.0.0.1:3000"
     assert_eq!(cfg.node_id, "node-1");
     assert_eq!(cfg.services.len(), 1);
 }
+
+#[test]
+fn loads_services_from_sibling_services_config_when_present() {
+    let dir = std::env::temp_dir().join(format!(
+        "medium-home-node-config-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    fs::create_dir_all(&dir).unwrap();
+    let node_path = dir.join("node.toml");
+    let services_path = dir.join("services.toml");
+
+    fs::write(
+        &node_path,
+        r#"
+node_id = "node-1"
+node_label = "Node"
+
+[[services]]
+id = "legacy_inline"
+kind = "https"
+target = "127.0.0.1:3000"
+"#,
+    )
+    .unwrap();
+    fs::write(
+        &services_path,
+        r#"
+[[services]]
+id = "manifest_service"
+kind = "http"
+target = "127.0.0.1:8082"
+enabled = false
+"#,
+    )
+    .unwrap();
+
+    let cfg = home_node::config::load_from_path(&node_path).unwrap();
+    assert_eq!(cfg.services.len(), 1);
+    assert_eq!(cfg.services[0].id, "manifest_service");
+    assert!(!cfg.services[0].enabled);
+
+    fs::remove_dir_all(dir).unwrap();
+}

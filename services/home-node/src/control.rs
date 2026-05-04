@@ -29,6 +29,7 @@ pub fn build_registration(cfg: &NodeConfig) -> RegisterNodeRequest {
         services: cfg
             .services
             .iter()
+            .filter(|svc| svc.enabled)
             .map(|svc| PublishedService {
                 id: svc.id.clone(),
                 kind: match svc.kind.as_str() {

@@ -72,7 +72,7 @@ async fn init_control_creates_expected_paths_and_files() -> anyhow::Result<()> {
     assert!(control_key_path.is_file());
     assert!(service_ca_cert_path.is_file());
     assert!(service_ca_key_path.is_file());
-    assert!(!temp.path().join("etc/medium/node.toml").exists());
+    assert!(!temp.path().join("home/.medium/node.toml").exists());
     assert!(
         !temp
             .path()
@@ -435,13 +435,17 @@ async fn init_node_creates_node_config_and_agent_unit_from_node_invite() -> anyh
     .map_err(anyhow::Error::msg)?
     .expect("init-node should return a summary");
 
-    let node_config = load_from_path(&temp.path().join("etc/medium/node.toml"))?;
+    let node_config_path = temp.path().join("home/.medium/node.toml");
+    let services_config_path = temp.path().join("home/.medium/services.toml");
+    let node_config = load_from_path(&node_config_path)?;
     assert_eq!(node_config.node_id, "office-server");
     assert_eq!(node_config.bind_addr, "0.0.0.0:17001");
     assert_eq!(
         node_config.public_addr.as_deref(),
         Some("203.0.113.10:17001")
     );
+    assert!(!fs::read_to_string(&node_config_path)?.contains("[[services]]"));
+    assert!(services_config_path.is_file());
     assert_eq!(node_config.services[0].id, "svc_ssh");
     assert_eq!(node_config.services[0].kind, "ssh");
     assert_eq!(
@@ -486,6 +490,49 @@ async fn init_node_creates_node_config_and_agent_unit_from_node_invite() -> anyh
     Ok(())
 }
 
+#[tokio::test]
+async fn init_node_reconfigure_preserves_existing_services_config() -> anyhow::Result<()> {
+    let _guard = env_lock()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
+    let temp = tempfile::tempdir()?;
+    let _root = EnvGuard::set("MEDIUM_ROOT", temp.path());
+    let _node_id = EnvGuard::set_str("MEDIUM_NODE_ID", "office-server");
+    let first_invite = "medium://node?v=1&control=https://control-one.example.test&security=pinned-tls&control_pin=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&shared_secret=medium-shared-secret-one";
+    let second_invite = "medium://node?v=1&control=https://control-two.example.test&security=pinned-tls&control_pin=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb&shared_secret=medium-shared-secret-two";
+
+    run_main(vec![
+        "medium".to_string(),
+        "init-node".to_string(),
+        first_invite.to_string(),
+    ])
+    .await
+    .map_err(anyhow::Error::msg)?;
+
+    let services_config_path = temp.path().join("home/.medium/services.toml");
+    let custom_services = "[[services]]\nid = \"hello\"\nkind = \"http\"\ntarget = \"127.0.0.1:8082\"\nlabel = \"Hello\"\nenabled = true\n";
+    fs::write(&services_config_path, custom_services)?;
+
+    run_main(vec![
+        "medium".to_string(),
+        "init-node".to_string(),
+        second_invite.to_string(),
+        "--reconfigure".to_string(),
+    ])
+    .await
+    .map_err(anyhow::Error::msg)?;
+
+    let node_config = load_from_path(temp.path().join("home/.medium/node.toml"))?;
+    assert_eq!(
+        node_config.control_url.as_deref(),
+        Some("https://control-two.example.test")
+    );
+    assert_eq!(fs::read_to_string(&services_config_path)?, custom_services);
+    assert_eq!(node_config.services.len(), 1);
+    assert_eq!(node_config.services[0].id, "hello");
+    Ok(())
+}
+
 #[cfg(target_os = "macos")]
 #[tokio::test]
 async fn init_node_uses_macos_application_support_without_systemd() -> anyhow::Result<()> {
@@ -515,9 +562,11 @@ async fn init_node_uses_macos_application_support_without_systemd() -> anyhow::R
     .map_err(anyhow::Error::msg)?
     .expect("init-node should return a summary");
 
-    let node_config_path = home_dir.join("Library/Application Support/Medium/config/node.toml");
+    let node_config_path = home_dir.join(".medium/node.toml");
+    let services_config_path = home_dir.join(".medium/services.toml");
     assert!(output.contains(&node_config_path.display().to_string()));
     assert!(node_config_path.is_file());
+    assert!(services_config_path.is_file());
     let node_config = load_from_path(&node_config_path)?;
     assert_eq!(
         node_config.control_url.as_deref(),
@@ -589,7 +638,7 @@ async fn init_node_derives_public_node_addr_for_default_wildcard_bind() -> anyho
     .await
     .map_err(anyhow::Error::msg)?;
 
-    let node_config = load_from_path(&temp.path().join("etc/medium/node.toml"))?;
+    let node_config = load_from_path(&temp.path().join("home/.medium/node.toml"))?;
     let public_addr = node_config
         .public_addr
         .as_deref()

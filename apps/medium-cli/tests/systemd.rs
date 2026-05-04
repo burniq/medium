@@ -194,7 +194,7 @@ async fn init_control_renders_units_and_enables_services() -> anyhow::Result<()>
     assert!(node_unit.contains(&format!(
         "ExecStart={} --config {}",
         temp.path().join("usr/bin/node-agent").display(),
-        temp.path().join("etc/medium/node.toml").display()
+        temp.path().join("home/.medium/node.toml").display()
     )));
     assert!(node_unit.contains("Environment=OVERLAY_CONTROL_URL=https://control.example.test"));
     assert!(node_unit.contains(&format!(

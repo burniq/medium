@@ -143,42 +143,53 @@ Clients try the node's direct TCP candidate first. If that path is unreachable,
 they fall back to the relay advertised by the control plane. This lets a node
 behind NAT keep outbound relay connections without opening an inbound port.
 
-On Linux, `medium init-node` creates `/etc/medium/node.toml` with a default SSH
-service and enables `medium-node-agent.service`.
+On Linux, `medium init-node` creates `~/.medium/node.toml` and
+`~/.medium/services.toml` with a default SSH service. When run with `sudo`, the
+configs are written under the target user's home, for example
+`/root/.medium/node.toml`. Linux installs also enable `medium-node-agent.service`.
 
-On macOS, `medium init-node` creates
-`~/Library/Application Support/Medium/config/node.toml`. Run the node agent
-from a terminal:
+On macOS, `medium init-node` creates the same files under `~/.medium`. Run the
+node agent from a terminal:
 
 ```sh
 medium run
 ```
 
-The generated node config starts with a default SSH service:
+The generated node config contains node identity, control-plane, and transport
+settings:
 
 ```toml
 node_id = "workstation-1"
 node_label = "workstation-1"
 bind_addr = "0.0.0.0:17001"
 public_addr = "192.0.2.10:17001"
+control_url = "https://control.example.com:7777"
+control_pin = "sha256:..."
+shared_secret = "medium-shared-secret-..."
+```
 
+The generated service catalog lives in `~/.medium/services.toml`:
+
+```toml
 [[services]]
 id = "svc_ssh"
 kind = "ssh"
 target = "127.0.0.1:22"
 user_name = "overlay"
+enabled = true
 ```
 
-You can add more published services to the same file:
+You can add more published services to `~/.medium/services.toml`:
 
 ```toml
 [[services]]
 id = "svc_web"
-kind = "https"
+kind = "http"
 target = "127.0.0.1:3000"
+enabled = true
 ```
 
-After changing `node.toml`, restart the agent:
+After changing `services.toml`, restart the agent:
 
 ```sh
 sudo systemctl restart medium-node-agent
@@ -200,14 +211,15 @@ printf 'hello from medium\n' >/tmp/medium-dummy/index.html
 python3 -m http.server 3000 --directory /tmp/medium-dummy --bind 127.0.0.1
 ```
 
-Then add it to the generated `node.toml`:
+Then add it to `~/.medium/services.toml`:
 
 ```toml
 [[services]]
 id = "svc_dummy_web"
-kind = "https"
+kind = "http"
 label = "Dummy Web"
 target = "127.0.0.1:3000"
+enabled = true
 ```
 
 Restart the node agent:
