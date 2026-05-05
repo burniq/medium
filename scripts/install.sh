@@ -2,7 +2,7 @@
 set -eu
 
 repo="${MEDIUM_REPO:-burniq/medium}"
-version="${MEDIUM_VERSION:-0.0.2}"
+version="${MEDIUM_VERSION:-0.0.3}"
 release_tag="${MEDIUM_RELEASE_TAG:-v$version}"
 
 need() {
