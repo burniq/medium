@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 out_dir="${1:-$repo_root/dist/package}"
 release_dir="${2:-$repo_root/dist}"
-version="${MEDIUM_VERSION:-0.0.2}"
+version="${MEDIUM_VERSION:-0.0.3}"
 target="${MEDIUM_TARGET:-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)}"
 
 cd "$repo_root"
